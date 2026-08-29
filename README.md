@@ -1,42 +1,37 @@
 # python-utils-50
 
-A collection of 50 lightweight Python utility functions aimed at simplifying common programming tasks. Designed for both beginners and experienced developers, these utilities enhance productivity by reducing boilerplate code.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+python-utils-50 is a lightweight library offering fifty practical utility functions for Python developers. It focuses on solving common problems in file management, data handling, and text processing using only the standard library.
 
 ## Features
 
-- **String Manipulation**: Functions for formatting, validating, and transforming strings efficiently.
-- **Data Processing**: Easy-to-use utilities for manipulating lists, dictionaries, and sets, streamlining data handling tasks.
-- **File Operations**: Quick methods for reading, writing, and managing files, which simplify file system interactions.
-- **Time and Date Functions**: Helpful time-related utilities for easy date manipulations and formatting.
+- Fifty reusable functions organized into logical modules for easy discovery
+- Pure standard library implementation with no external dependencies
+- Safe file handling including atomic writes and backup creation
+- Text processing tools such as slug generation and duplicate removal
 
 ## Installation
 
-To install `python-utils-50`, clone the repository and install the dependencies using pip:
+```bash
+pip install python-utils-50
+```
+
+To install the latest development version:
 
 ```bash
-git clone https://github.com/your_username/python-utils-50.git
-cd python-utils-50
-pip install -r requirements.txt
+pip install git+https://github.com/Developer/python-utils-50.git
 ```
 
-## Basic Usage Example
-
-Once installed, you can use the utilities by importing them into your Python script. Here's a quick example demonstrating a string utility function:
+## Usage
 
 ```python
-from utils import string_utils
+from python_utils_50.string_utils import slugify, remove_duplicates
+from python_utils_50.file_utils import safe_write
 
-# Example of using the capitalize_words function from string_utils
-text = "hello world from python-utils-50"
-capitalized_text = string_utils.capitalize_words(text)
-print(capitalized_text)  # Output: "Hello World From Python-Utils-50"
+slug = slugify("Hello World! This is a test.")
+print(slug)  # "hello-world-this-is-a-test"
+
+unique = remove_duplicates(["apple", "banana", "apple", "cherry"])
+safe_write("output.txt", "Processed data", backup=True)
 ```
-
-Explore the full range of utilities, including file handling and data processing, to make your development experience smoother and more efficient.
-
-## License
-
-![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)
-
-This project is licensed under the [MIT License](LICENSE).
-Feel free to contribute or use these utilities in your own applications!
