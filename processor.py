@@ -1,37 +1,49 @@
-import logging
-from logging.handlers import RotatingFileHandler
-import os
+import time
+import random
+from typing import Callable, Any
 
-def setup_rotating_logger(log_file: str = "app.log", max_bytes: int = 1048576, backup_count: int = 5) -> logging.Logger:
-    logger = logging.getLogger("python-utils")
-    logger.setLevel(logging.INFO)
+class RetryProcessor:
+    """Handles retry logic for network operations with exponential backoff."""
 
-    # Remove existing handlers
-    for handler in logger.handlers[:]:
-        logger.removeHandler(handler)
+    def __init__(self, max_retries: int = 3, initial_delay: float = 1.0, backoff_factor: float = 2.0):
+        self.max_retries = max_retries
+        self.initial_delay = initial_delay
+        self.backoff_factor = backoff_factor
 
-    # Create rotating handler
-    rotating_handler = RotatingFileHandler(
-        log_file, maxBytes=max_bytes, backupCount=backup_count
-    )
+    def execute(self, func: Callable[[], Any], *args, **kwargs) -> Any:
+        """Execute a function with retry logic. Suitable for network calls."""
+        delay = self.initial_delay
+        last_exception = None
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                last_exception = e
+                if attempt == self.max_retries:
+                    break
+                # Add jitter to prevent thundering herd
+                jitter = random.uniform(0, 0.1) * delay
+                sleep_time = delay + jitter
+                print(f"Retry attempt {attempt} failed: {e}. Sleeping for {sleep_time:.2f}s")
+                time.sleep(sleep_time)
+                delay *= self.backoff_factor
+        raise ConnectionError(f"Network operation failed after {self.max_retries} attempts") from last_exception
 
-    rotating_handler.setFormatter(
-        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    )
-
-    logger.addHandler(rotating_handler)
-    return logger
-
-def process_items(items):
-    logger = setup_rotating_logger()
-    logger.info("Beginning item processing with logger rotation")
-    for idx, item in enumerate(items):
-        logger.debug(f"Item {idx}: {item}")
-        if item > 10:
-            logger.warning("Item exceeds threshold")
-    logger.info("Processing finished")
-    return len(items)
+# Demo function to simulate network operation
+def simulated_network_call(fail_first_n: int = 2) -> str:
+    """Simulates a flaky network request."""
+    # Use a simple counter simulation
+    if not hasattr(simulated_network_call, 'call_count'):
+        simulated_network_call.call_count = 0
+    simulated_network_call.call_count += 1
+    if simulated_network_call.call_count <= fail_first_n:
+        raise ConnectionError("Temporary network issue")
+    return "Data fetched successfully"
 
 if __name__ == "__main__":
-    result = process_items([1, 5, 12, 3, 15])
-    print(f"Processed {result} items")
+    processor = RetryProcessor(max_retries=4, initial_delay=0.2, backoff_factor=1.5)
+    try:
+        result = processor.execute(simulated_network_call, fail_first_n=2)
+        print(result)
+    except Exception as e:
+        print(str(e))
