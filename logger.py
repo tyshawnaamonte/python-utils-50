@@ -1,52 +1,47 @@
 import logging
-from logging.handlers import RotatingFileHandler
-import os
+import functools
+from typing import Callable, Any
 
-def setup_logger(
-    name: str = "python_utils",
-    log_file: str = "app.log",
-    level: int = logging.INFO,
-    max_bytes: int = 5 * 1024 * 1024,
-    backup_count: int = 3
-) -> logging.Logger:
-    """Configure and return a logger with rotating file handler.
+# global cache for loggers to avoid redundant instantiation
+_loggers = {}
 
-    This sets up a logger that writes to a file with automatic rotation
-    when the file size exceeds max_bytes. Old logs are backed up.
-    """
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
+def get_logger(name: str) -> logging.Logger:
+    """Thread-safe singleton access to named loggers."""
+    if name not in _loggers:
+        _loggers[name] = logging.getLogger(name)
+    return _loggers[name]
 
-    # Prevent duplicate handlers if called multiple times
-    if logger.hasHandlers():
-        return logger
+def lazy_log_execution(func: Callable) -> Callable:
+    """Decorator to log function execution time lazily."""
+    logger = get_logger(func.__module__)
 
-    # Create directory for log file if it does not exist
-    log_dir = os.path.dirname(log_file)
-    if log_dir and not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        if not logger.isEnabledFor(logging.DEBUG):
+            return func(*args, **kwargs)
+        
+        import time
+        start = time.perf_counter()
+        result = func(*args, **kwargs)
+        duration = time.perf_counter() - start
+        logger.debug(f"function {func.__name__} executed in {duration:.4f}s")
+        return result
+    return wrapper
 
-    # Set up rotating file handler
-    file_handler = RotatingFileHandler(
-        log_file,
-        maxBytes=max_bytes,
-        backupCount=backup_count,
-        encoding="utf-8"
-    )
-    file_handler.setLevel(level)
+class PerformanceLogger:
+    """Batch-oriented logging handler for high throughput."""
+    def __init__(self, logger_name: str = "perf_logger"):
+        self.logger = get_logger(logger_name)
+        self._buffer = []
 
-    # Define log format
-    formatter = logging.Formatter(
-        "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-    )
-    file_handler.setFormatter(formatter)
+    def emit(self, message: str, flush_threshold: int = 10) -> None:
+        """Buffered logging to minimize I/O overhead."""
+        self._buffer.append(message)
+        if len(self._buffer) >= flush_threshold:
+            self.flush()
 
-    logger.addHandler(file_handler)
-
-    # Add console handler for immediate feedback
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(level)
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
-
-    return logger
+    def flush(self) -> None:
+        """Flush buffered logs to standard output."""
+        if self._buffer:
+            self.logger.info(" | ".join(self._buffer))
+            self._buffer.clear()
