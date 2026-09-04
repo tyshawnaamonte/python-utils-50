@@ -1,49 +1,42 @@
-import time
-import random
-from functools import wraps
+import json
+import logging
+from typing import Any, Dict, List, Optional
 
-def retry_network_operation(
-    max_retries=3,
-    initial_delay=1.0,
-    backoff_factor=2.0,
-    jitter=True,
-    exceptions=(ConnectionError, TimeoutError, OSError)
-):
-    """Decorator for retrying network operations.
-    Applies exponential backoff and optional random jitter.
-    """
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('python-utils-50')
 
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            delay = initial_delay
-            last_exception = None
-            # Loop over attempts, including the initial one
-            for attempt in range(max_retries + 1):
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as exc:
-                    last_exception = exc
-                    if attempt == max_retries:
-                        # No more retries left
-                        break
-                    # Add jitter to prevent synchronized retries
-                    sleep_time = delay
-                    if jitter:
-                        sleep_time *= (0.5 + random.random())
-                    time.sleep(sleep_time)
-                    # Increase delay for next attempt
-                    delay *= backoff_factor
-            # After exhausting retries, propagate the exception
-            raise last_exception
-        return wrapper
-    return decorator
+def safe_json_load(file_path: str) -> Optional[Dict[str, Any]]:
+    """Load json file safely with error handling."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logger.error(f"failed to load {file_path}: {e}")
+        return None
 
-# Example usage: decorate a function that performs network ops
-@retry_network_operation(max_retries=4, initial_delay=0.1)
-def example_network_call(payload):
-    """Simulates a network operation that can fail intermittently."""
-    # Simulate random failure for demonstration purposes
-    if random.random() < 0.65:
-        raise ConnectionError("Connection refused or timeout")
-    return {"status": "success", "data": payload}
+def chunk_list(data: List[Any], size: int) -> List[List[Any]]:
+    """Split list into smaller chunks of specific size."""
+    if size <= 0:
+        raise ValueError("chunk size must be positive")
+    return [data[i:i + size] for i in range(0, len(data), size)]
+
+def flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
+    """Flatten nested dictionary keys."""
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
+def get_nested(data: Dict[str, Any], path: List[str], default: Any = None) -> Any:
+    """Access nested dictionary keys safely."""
+    current = data
+    for key in path:
+        if isinstance(current, dict):
+            current = current.get(key)
+        else:
+            return default
+    return current if current is not None else default
