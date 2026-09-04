@@ -1,26 +1,22 @@
-from typing import Optional, Any
-
-class UtilsError(Exception):
-    """Base exception class for python-utils-50."""
-    def __init__(self, message: str, code: Optional[int] = None) -> None:
-        super().__init__(message)
-        self.code = code
-
-class ConfigurationError(UtilsError):
-    """Raised when configuration settings are invalid."""
+class BaseUtilsError(Exception):
+    """Base exception for python-utils-50 library."""
     pass
 
-class ValidationError(UtilsError):
-    """Raised when input data fails validation checks."""
-    def __init__(self, message: str, field: Optional[str] = None, data: Any = None) -> None:
-        super().__init__(message)
-        self.field = field
-        self.data = data
-
-class ProcessingError(UtilsError):
-    """Raised during internal data processing cycles."""
+class ConfigurationError(BaseUtilsError):
+    """Raised when configuration values are missing or invalid."""
     pass
 
-def raise_error(message: str, error_type: type = UtilsError, **kwargs: Any) -> None:
-    """Helper to raise standardized exceptions with context."""
-    raise error_type(message, **kwargs)
+class ProcessingError(BaseUtilsError):
+    """Raised during data transformation or internal logic steps."""
+    pass
+
+class ValidationError(BaseUtilsError):
+    """Raised when input validation fails against defined schemas."""
+    pass
+
+def handle_exception(exc: Exception) -> None:
+    """Centralized error reporting utility for the package."""
+    if isinstance(exc, BaseUtilsError):
+        print(f"Application Error: {exc}")
+    else:
+        print(f"Unexpected System Error: {exc}")
