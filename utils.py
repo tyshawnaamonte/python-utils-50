@@ -1,40 +1,32 @@
-import time
-import functools
-import random
-from typing import Callable, Type, Tuple, Any
+import json
+from typing import Any, Dict, Optional
 
-class MaxRetriesExceededError(Exception):
-    """Exception raised when maximum retry attempts are reached."""
-    pass
+def load_json_file(file_path: str) -> Dict[str, Any]:
+    """Loads data from a json file with error handling."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(f"Data loading error: {e}")
+        return {}
 
-def retry(
-    exceptions: Tuple[Type[BaseException], ...] = (Exception,),
-    tries: int = 3,
-    delay: float = 1.0,
-    backoff: float = 2.0,
-    jitter: bool = True
-) -> Callable:
-    """
-    Decorator to retry a function call with exponential backoff.
-    """
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            attempt_delay = delay
-            for attempt in range(1, tries + 1):
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as e:
-                    if attempt == tries:
-                        raise MaxRetriesExceededError(
-                            f"Function '{func.__name__}' failed after {tries} attempts."
-                        ) from e
-                    
-                    sleep_time = attempt_delay
-                    if jitter:
-                        sleep_time *= random.uniform(0.5, 1.5)
-                    
-                    time.sleep(sleep_time)
-                    attempt_delay *= backoff
-        return wrapper
-    return decorator
+def flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
+    """Flattens a nested dictionary into a single level."""
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
+def sanitize_data(data: Any) -> Any:
+    """Recursively ensures strings are stripped of whitespace."""
+    if isinstance(data, str):
+        return data.strip()
+    elif isinstance(data, dict):
+        return {k: sanitize_data(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [sanitize_data(i) for i in data]
+    return data
