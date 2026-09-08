@@ -1,32 +1,30 @@
-import json
-from typing import Any, Dict, Optional
+import time
+import functools
+from typing import Callable, Any, Type, Tuple
 
-def load_json_file(file_path: str) -> Dict[str, Any]:
-    """Loads data from a json file with error handling."""
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"Data loading error: {e}")
-        return {}
+def retry(exceptions: Tuple[Type[Exception], ...] = (Exception,), 
+          retries: int = 3, 
+          delay: float = 1.0) -> Callable:
+    """Decorator for retrying functions on specific exceptions."""
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            attempt = 0
+            while attempt < retries:
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    attempt += 1
+                    if attempt == retries:
+                        raise e
+                    time.sleep(delay)
+            return None
+        return wrapper
+    return decorator
 
-def flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
-    """Flattens a nested dictionary into a single level."""
-    items = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
-
-def sanitize_data(data: Any) -> Any:
-    """Recursively ensures strings are stripped of whitespace."""
-    if isinstance(data, str):
-        return data.strip()
-    elif isinstance(data, dict):
-        return {k: sanitize_data(v) for k, v in data.items()}
-    elif isinstance(data, list):
-        return [sanitize_data(i) for i in data]
-    return data
+@retry(exceptions=(ConnectionError,), retries=3, delay=2.0)
+def fetch_data(url: str) -> str:
+    """Example network operation function."""
+    # Simulating a network request
+    print(f"Fetching from {url}...")
+    raise ConnectionError("Network request failed")
