@@ -1,61 +1,32 @@
-import re
-from typing import Any, Dict, List
+from typing import Any, Optional, Dict, List
 
-# Reorganized validators for better maintainability and readability
+def validate_schema(data: Dict[str, Any], schema: Dict[str, type]) -> List[str]:
+    """Validate dictionary values against a type schema."""
+    errors = []
+    for key, expected_type in schema.items():
+        if key not in data:
+            errors.append(f"missing required key: {key}")
+        elif not isinstance(data[key], expected_type):
+            actual = type(data[key]).__name__
+            expected = expected_type.__name__
+            errors.append(f"key {key} expects {expected}, got {actual}")
+    return errors
 
-def validate_email(email: str) -> bool:
-    """Validate basic email address format."""
-    if not isinstance(email, str) or not email.strip():
-        return False
-    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-    return bool(re.match(pattern, email))
+def sanitize_input(value: Any, default: Any = None) -> Any:
+    """Return value if truthy, otherwise default."""
+    return value if value else default
 
-def validate_url(url: str) -> bool:
-    """Validate simple URL starting with http or https."""
-    if not isinstance(url, str) or not url.strip():
-        return False
-    pattern = r"^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/[^\s]*)?$"
-    return bool(re.match(pattern, url))
+def is_non_empty_string(value: Any) -> bool:
+    """Check if input is a valid non-empty string."""
+    return isinstance(value, str) and len(value.strip()) > 0
 
-def validate_phone(phone: str) -> bool:
-    """Validate phone number by digit count after cleaning."""
-    if not isinstance(phone, str):
-        return False
-    cleaned = re.sub(r"\D", "", phone)
-    return 10 <= len(cleaned) <= 15
-
-def validate_positive_int(value: Any) -> bool:
-    """Check for positive integer value."""
-    return isinstance(value, int) and value > 0
-
-def validate_required_dict(data: Dict[str, Any], keys: List[str]) -> bool:
-    """Ensure dictionary has all specified keys."""
-    if not isinstance(data, dict):
-        return False
-    return all(k in data for k in keys)
-
-class Validators:
-    """Class wrapper for organized access to validators."""
-    
-    def __init__(self) -> None:
-        pass
-
-    @staticmethod
-    def email(email: str) -> bool:
-        return validate_email(email)
-
-    @staticmethod
-    def url(url: str) -> bool:
-        return validate_url(url)
-
-    @staticmethod
-    def phone(phone: str) -> bool:
-        return validate_phone(phone)
-
-    @staticmethod
-    def positive_int(value: Any) -> bool:
-        return validate_positive_int(value)
-
-    @staticmethod
-    def required_dict(data: Dict[str, Any], keys: List[str]) -> bool:
-        return validate_required_dict(data, keys)
+def extract_field(data: Dict[str, Any], path: str, default: Any = None) -> Any:
+    """Extract value from nested dict using dot notation."""
+    keys = path.split('.')
+    current = data
+    try:
+        for key in keys:
+            current = current[key]
+        return current if current is not None else default
+    except (KeyError, TypeError, AttributeError):
+        return default
