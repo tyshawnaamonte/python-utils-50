@@ -1,37 +1,28 @@
-import functools
-import time
-from typing import Callable, Any, Dict
+from typing import Any, Iterable, Dict, List, Optional
 
-# Cache for storing expensive function results
-_CACHE: Dict[tuple, Any] = {}
+def flatten_dict(data: Dict[str, Any], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
+    """Flatten a nested dictionary into a single-level dictionary."""
+    items: List[tuple] = []
+    for key, value in data.items():
+        new_key = f"{parent_key}{sep}{key}" if parent_key else key
+        if isinstance(value, dict):
+            items.extend(flatten_dict(value, new_key, sep=sep).items())
+        else:
+            items.append((new_key, value))
+    return dict(items)
 
-def memoize(func: Callable) -> Callable:
-    """Decorator to cache function results based on arguments."""
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs) -> Any:
-        key = (func.__name__, args, frozenset(kwargs.items()))
-        if key not in _CACHE:
-            _CACHE[key] = func(*args, **kwargs)
-        return _CACHE[key]
-    return wrapper
+def chunk_list(data: Iterable[Any], size: int) -> List[List[Any]]:
+    """Split an iterable into smaller chunks of a fixed size."""
+    data_list = list(data)
+    return [data_list[i:i + size] for i in range(0, len(data_list), size)]
 
-def batch_process(items: list, batch_size: int = 100) -> list:
-    """Generator for chunking large lists to reduce memory overhead."""
-    for i in range(0, len(items), batch_size):
-        yield items[i:i + batch_size]
-
-def timed_execution(func: Callable) -> Callable:
-    """Decorator for monitoring execution performance."""
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        start = time.perf_counter()
-        result = func(*args, **kwargs)
-        duration = time.perf_counter() - start
-        print(f"Execution of {func.__name__} took {duration:.4f}s")
-        return result
-    return wrapper
-
-def clear_cache() -> None:
-    """Manual invalidation of the internal memory cache."""
-    global _CACHE
-    _CACHE.clear()
+def get_nested(data: Dict[str, Any], path: str, default: Optional[Any] = None) -> Any:
+    """Access a nested dictionary value using a dot-notation string."""
+    keys = path.split('.')
+    current = data
+    try:
+        for key in keys:
+            current = current[key]
+        return current
+    except (KeyError, TypeError):
+        return default
