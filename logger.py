@@ -1,33 +1,41 @@
 import logging
-import os
-from logging.handlers import RotatingFileHandler
+import sys
 
-def setup_logger(name: str, log_file: str = 'app.log', level: int = logging.INFO) -> logging.Logger:
-    """Configures a rotating file logger for the application."""
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
+# Configure structured logging for the utility suite
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=sys.stdout
+)
 
-    # Prevent adding multiple handlers if setup is called multiple times
-    if not logger.handlers:
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
+logger = logging.getLogger('python-utils-50')
 
-        # 5MB per file, keep 3 backup files
-        file_handler = RotatingFileHandler(
-            log_file, maxBytes=5 * 1024 * 1024, backupCount=3
-        )
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
+def validate_input(data: dict, required_keys: list) -> bool:
+    """Ensures dictionary contains all necessary keys for processing."""
+    for key in required_keys:
+        if key not in data:
+            logger.error(f"missing required key: {key}")
+            return False
+    return True
 
-        # Add console output for development visibility
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
-
-    return logger
+def process_main_loop(items: list):
+    """Core loop processing with input validation."""
+    required = ['id', 'payload']
+    
+    for item in items:
+        if not isinstance(item, dict):
+            logger.warning("skipping invalid item: non-dictionary type")
+            continue
+            
+        if not validate_input(item, required):
+            continue
+            
+        try:
+            logger.info(f"processing item {item['id']}")
+            # Processing logic follows here
+        except Exception as e:
+            logger.error(f"runtime error in loop: {str(e)}")
 
 if __name__ == '__main__':
-    # Example usage
-    log = setup_logger('utils_logger')
-    log.info('Logger initialized successfully')
+    data_queue = [{'id': 1, 'payload': 'test'}, {'invalid': 'missing_id'}]
+    process_main_loop(data_queue)
