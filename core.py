@@ -1,42 +1,31 @@
-import json
-import logging
 from typing import Any, Dict, List, Optional
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('python-utils-50')
+def deep_flatten(items: List[Any]) -> List[Any]:
+    """Recursively flattens a nested list structure."""
+    flat = []
+    for item in items:
+        if isinstance(item, list):
+            flat.extend(deep_flatten(item))
+        else:
+            flat.append(item)
+    return flat
 
-def safe_json_load(file_path: str) -> Optional[Dict[str, Any]]:
-    """Load json file safely with error handling."""
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        logger.error(f"failed to load {file_path}: {e}")
-        return None
+def merge_dicts(base: Dict[str, Any], overrides: Dict[str, Any]) -> Dict[str, Any]:
+    """Merges two dictionaries recursively."""
+    result = base.copy()
+    for key, value in overrides.items():
+        if isinstance(value, dict) and key in result and isinstance(result[key], dict):
+            result[key] = merge_dicts(result[key], value)
+        else:
+            result[key] = value
+    return result
 
-def chunk_list(data: List[Any], size: int) -> List[List[Any]]:
-    """Split list into smaller chunks of specific size."""
+def sanitize_keys(data: Dict[str, Any], forbidden: List[str]) -> Dict[str, Any]:
+    """Removes sensitive keys from a dictionary."""
+    return {k: v for k, v in data.items() if k not in forbidden}
+
+def chunk_list(items: List[Any], size: int) -> List[List[Any]]:
+    """Divides list into smaller chunks of specified size."""
     if size <= 0:
-        raise ValueError("chunk size must be positive")
-    return [data[i:i + size] for i in range(0, len(data), size)]
-
-def flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
-    """Flatten nested dictionary keys."""
-    items = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
-
-def get_nested(data: Dict[str, Any], path: List[str], default: Any = None) -> Any:
-    """Access nested dictionary keys safely."""
-    current = data
-    for key in path:
-        if isinstance(current, dict):
-            current = current.get(key)
-        else:
-            return default
-    return current if current is not None else default
+        raise ValueError("Chunk size must be greater than zero")
+    return [items[i:i + size] for i in range(0, len(items), size)]
