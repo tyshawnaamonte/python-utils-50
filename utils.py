@@ -1,30 +1,33 @@
 import time
 import functools
-from typing import Callable, Any, Type, Tuple
+import logging
 
-def retry(exceptions: Tuple[Type[Exception], ...] = (Exception,), 
-          retries: int = 3, 
-          delay: float = 1.0) -> Callable:
-    """Decorator for retrying functions on specific exceptions."""
-    def decorator(func: Callable) -> Callable:
+logger = logging.getLogger(__name__)
+
+def retry_network_op(retries=3, delay=2, backoff=2):
+    """Decorator for retrying network operations with exponential backoff."""
+    def decorator(func):
         @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            attempt = 0
-            while attempt < retries:
+        def wrapper(*args, **kwargs):
+            current_delay = delay
+            for attempt in range(1, retries + 1):
                 try:
                     return func(*args, **kwargs)
-                except exceptions as e:
-                    attempt += 1
+                except (ConnectionError, TimeoutError) as e:
                     if attempt == retries:
-                        raise e
-                    time.sleep(delay)
-            return None
+                        logger.error(f"Final attempt {attempt} failed: {e}")
+                        raise
+                    
+                    logger.warning(f"Attempt {attempt} failed, retrying in {current_delay}s...")
+                    time.sleep(current_delay)
+                    current_delay *= backoff
         return wrapper
     return decorator
 
-@retry(exceptions=(ConnectionError,), retries=3, delay=2.0)
-def fetch_data(url: str) -> str:
-    """Example network operation function."""
-    # Simulating a network request
-    print(f"Fetching from {url}...")
-    raise ConnectionError("Network request failed")
+@retry_network_op(retries=3, delay=1)
+def fetch_data(url):
+    """Example function performing a network call."""
+    # Simulating a network operation
+    logger.info(f"Fetching data from {url}")
+    # raise ConnectionError("Network unreachable") 
+    return {"status": "success"}
