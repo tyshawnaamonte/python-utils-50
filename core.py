@@ -1,31 +1,35 @@
-from typing import Any, Dict, List, Optional
+import time
+import functools
+import logging
 
-def deep_flatten(items: List[Any]) -> List[Any]:
-    """Recursively flattens a nested list structure."""
-    flat = []
-    for item in items:
-        if isinstance(item, list):
-            flat.extend(deep_flatten(item))
-        else:
-            flat.append(item)
-    return flat
+logger = logging.getLogger(__name__)
 
-def merge_dicts(base: Dict[str, Any], overrides: Dict[str, Any]) -> Dict[str, Any]:
-    """Merges two dictionaries recursively."""
-    result = base.copy()
-    for key, value in overrides.items():
-        if isinstance(value, dict) and key in result and isinstance(result[key], dict):
-            result[key] = merge_dicts(result[key], value)
-        else:
-            result[key] = value
-    return result
+def retry(exceptions, tries=3, delay=1, backoff=2):
+    """
+    Decorator to retry a function after specific exceptions.
+    :param exceptions: Tuple of exceptions to catch
+    :param tries: Max number of retries
+    :param delay: Initial delay between retries in seconds
+    :param backoff: Multiplier for delay after each retry
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            mtries, mdelay = tries, delay
+            while mtries > 1:
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    msg = f'{e}, Retrying in {mdelay} seconds...'
+                    logger.warning(msg)
+                    time.sleep(mdelay)
+                    mtries -= 1
+                    mdelay *= backoff
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
 
-def sanitize_keys(data: Dict[str, Any], forbidden: List[str]) -> Dict[str, Any]:
-    """Removes sensitive keys from a dictionary."""
-    return {k: v for k, v in data.items() if k not in forbidden}
-
-def chunk_list(items: List[Any], size: int) -> List[List[Any]]:
-    """Divides list into smaller chunks of specified size."""
-    if size <= 0:
-        raise ValueError("Chunk size must be greater than zero")
-    return [items[i:i + size] for i in range(0, len(items), size)]
+# Example usage for network calls
+# @retry((ConnectionError, TimeoutError), tries=3)
+# def fetch_data(url):
+#     pass
