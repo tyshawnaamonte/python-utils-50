@@ -1,31 +1,36 @@
-from typing import List, Dict, Any, Optional
+from typing import Iterable, Generator, Any, Type, TypeVar, List
 
-class DataProcessor:
-    """Handles transformation and validation of input datasets."""
+T = TypeVar('T')
 
-    def __init__(self, settings: Optional[Dict[str, Any]] = None) -> None:
-        """Initialize processor with optional configuration settings."""
-        self.settings = settings or {}
+def chunk_iterable(iterable: Iterable[T], chunk_size: int) -> Generator[List[T], None, None]:
+    """Yield successive chunks of size chunk_size from the given iterable."""
+    if chunk_size <= 0:
+        raise ValueError("Chunk size must be greater than zero.")
+    
+    chunk = []
+    for item in iterable:
+        chunk.append(item)
+        if len(chunk) == chunk_size:
+            yield chunk
+            chunk = []
+    if chunk:
+        yield chunk
 
-    def clean_records(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Removes empty values and trims whitespace from string fields."""
-        cleaned = []
-        for entry in data:
-            processed = {
-                k: v.strip() if isinstance(v, str) else v 
-                for k, v in entry.items() if v is not None
-            }
-            cleaned.append(processed)
-        return cleaned
 
-    def transform_keys(self, data: List[Dict[str, Any]], mapping: Dict[str, str]) -> List[Dict[str, Any]]:
-        """Maps old dictionary keys to new values provided in mapping."""
-        transformed = []
-        for entry in data:
-            new_entry = {mapping.get(k, k): v for k, v in entry.items()}
-            transformed.append(new_entry)
-        return transformed
+def safe_cast(value: Any, to_type: Type[T], default: T) -> T:
+    """Safely cast a value to a given type, returning the default if casting fails."""
+    try:
+        if value is None:
+            return default
+        return to_type(value)
+    except (ValueError, TypeError):
+        return default
 
-    def validate_batch(self, data: List[Dict[str, Any]], required_keys: List[str]) -> bool:
-        """Checks if all required keys exist in every record of the batch."""
-        return all(all(key in record for key in required_keys) for record in data)
+
+def deep_flatten(nested_iterable: Iterable[Any]) -> Generator[Any, None, None]:
+    """Flatten a nested iterable of arbitrary depth, ignoring strings as iterables."""
+    for item in nested_iterable:
+        if isinstance(item, Iterable) and not isinstance(item, (str, bytes)):
+            yield from deep_flatten(item)
+        else:
+            yield item
