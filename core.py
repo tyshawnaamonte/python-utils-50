@@ -1,35 +1,60 @@
 import time
-import functools
-import logging
+from functools import wraps
+from threading import RLock
+from typing import Callable, Any, Dict, Tuple
 
-logger = logging.getLogger(__name__)
+class TTLCache:
+    """
+    A thread-safe in-memory cache with Time-To-Live (TTL) expiration.
+    """
+    def __init__(self, default_ttl: float = 300.0):
+        self.default_ttl = default_ttl
+        self._cache: Dict[Any, Tuple[Any, float]] = {}
+        self._lock = RLock()
 
-def retry(exceptions, tries=3, delay=1, backoff=2):
+    def get(self, key: Any) -> Any:
+        with self._lock:
+            if key not in self._cache:
+                return None
+            val, expiry = self._cache[key]
+            if time.time() > expiry:
+                del self._cache[key]
+                return None
+            return val
+
+    def set(self, key: Any, value: Any, ttl: float = None) -> None:
+        duration = ttl if ttl is not None else self.default_ttl
+        expiry = time.time() + duration
+        with self._lock:
+            self._cache[key] = (value, expiry)
+
+    def clear(self) -> None:
+        with self._lock:
+            self._cache.clear()
+
+def memoize_with_ttl(ttl: float = 60.0) -> Callable:
     """
-    Decorator to retry a function after specific exceptions.
-    :param exceptions: Tuple of exceptions to catch
-    :param tries: Max number of retries
-    :param delay: Initial delay between retries in seconds
-    :param backoff: Multiplier for delay after each retry
+    Decorator to cache function results with a TTL expiration.
     """
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            mtries, mdelay = tries, delay
-            while mtries > 1:
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as e:
-                    msg = f'{e}, Retrying in {mdelay} seconds...'
-                    logger.warning(msg)
-                    time.sleep(mdelay)
-                    mtries -= 1
-                    mdelay *= backoff
-            return func(*args, **kwargs)
+    cache = TTLCache(default_ttl=ttl)
+
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            # Generate a stable cache key for arguments
+            key = (args, tuple(sorted(kwargs.items())))
+            try:
+                hash(key)
+            except TypeError:
+                # Fallback for unhashable arguments (bypass cache)
+                return func(*args, **kwargs)
+
+            cached_val = cache.get(key)
+            if cached_val is not None:
+                return cached_val
+            
+            result = func(*args, **kwargs)
+            cache.set(key, result)
+            return result
         return wrapper
     return decorator
-
-# Example usage for network calls
-# @retry((ConnectionError, TimeoutError), tries=3)
-# def fetch_data(url):
-#     pass
