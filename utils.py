@@ -1,33 +1,44 @@
-import time
-import functools
-import logging
+import os
+import shutil
+from pathlib import Path
+from typing import Union, List
 
-logger = logging.getLogger(__name__)
+def ensure_directory(path: Union[str, Path]) -> Path:
+    """Creates directory if not exists and returns Path object."""
+    target = Path(path)
+    target.mkdir(parents=True, exist_ok=True)
+    return target
 
-def retry_network_op(retries=3, delay=2, backoff=2):
-    """Decorator for retrying network operations with exponential backoff."""
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            current_delay = delay
-            for attempt in range(1, retries + 1):
-                try:
-                    return func(*args, **kwargs)
-                except (ConnectionError, TimeoutError) as e:
-                    if attempt == retries:
-                        logger.error(f"Final attempt {attempt} failed: {e}")
-                        raise
-                    
-                    logger.warning(f"Attempt {attempt} failed, retrying in {current_delay}s...")
-                    time.sleep(current_delay)
-                    current_delay *= backoff
-        return wrapper
-    return decorator
+def clean_directory(directory: Union[str, Path]) -> None:
+    """Removes all contents within the specified directory."""
+    path = Path(directory)
+    if not path.is_dir():
+        return
+    for item in path.iterdir():
+        if item.is_file() or item.is_symlink():
+            item.unlink()
+        elif item.is_dir():
+            shutil.rmtree(item)
 
-@retry_network_op(retries=3, delay=1)
-def fetch_data(url):
-    """Example function performing a network call."""
-    # Simulating a network operation
-    logger.info(f"Fetching data from {url}")
-    # raise ConnectionError("Network unreachable") 
-    return {"status": "success"}
+def list_files_by_extension(directory: str, extension: str) -> List[Path]:
+    """Returns filtered list of files with given extension."""
+    return list(Path(directory).glob(f"*.{extension.lstrip('.')}"))
+
+def safe_remove(path: Union[str, Path]) -> bool:
+    """Attempts to remove a file, returns success status."""
+    try:
+        file_path = Path(path)
+        if file_path.exists():
+            file_path.unlink()
+            return True
+    except OSError:
+        return False
+    return False
+
+def format_byte_size(size_bytes: int) -> str:
+    """Converts raw bytes into human readable format."""
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size_bytes < 1024:
+            return f"{size_bytes:.2f} {unit}"
+        size_bytes /= 1024
+    return f"{size_bytes:.2f} TB"
