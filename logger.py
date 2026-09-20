@@ -1,38 +1,34 @@
 import logging
-import sys
-from typing import Optional
+from logging.handlers import RotatingFileHandler
+import os
 
-class CustomLogger:
-    """Utility for robust application logging."""
-    
-    def __init__(self, name: str, log_file: Optional[str] = None):
-        self.logger = logging.getLogger(name)
-        self.logger.setLevel(logging.INFO)
+def setup_logger(name: str, log_file: str = 'app.log', level: int = logging.INFO) -> logging.Logger:
+    """Configures a rotating file logger for the application."""
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+
+    # Prevent duplicate handlers if function is called multiple times
+    if not logger.handlers:
+        # 5MB per file, keep 3 historical backups
+        handler = RotatingFileHandler(
+            log_file, 
+            maxBytes=5 * 1024 * 1024, 
+            backupCount=3
+        )
         
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        
-        try:
-            stream_handler = logging.StreamHandler(sys.stdout)
-            stream_handler.setFormatter(formatter)
-            self.logger.addHandler(stream_handler)
-            
-            if log_file:
-                file_handler = logging.FileHandler(log_file)
-                file_handler.setFormatter(formatter)
-                self.logger.addHandler(file_handler)
-        except (PermissionError, OSError) as e:
-            print(f"Critical: Failed to initialize log handler: {e}", file=sys.stderr)
-            self.logger = logging.getLogger('fallback')
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
-    def safe_log(self, message: str, level: int = logging.INFO):
-        """Safely record messages without crashing execution."""
-        try:
-            if not isinstance(message, str):
-                message = str(message)
-            self.logger.log(level, message)
-        except Exception as e:
-            sys.stderr.write(f"Logging failure: {e}\n")
+        # Optional: stream to console
+        console = logging.StreamHandler()
+        console.setFormatter(formatter)
+        logger.addHandler(console)
 
-def get_logger(name: str) -> CustomLogger:
-    """Factory for application-wide logging instances."""
-    return CustomLogger(name)
+    return logger
+
+if __name__ == '__main__':
+    log = setup_logger('core_logger')
+    log.info('logger initialized successfully')
