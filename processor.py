@@ -1,36 +1,36 @@
-from typing import Iterable, Generator, Any, Type, TypeVar, List
+from typing import List, Dict, Any, Optional
 
-T = TypeVar('T')
+class DataProcessor:
+    """Handles transformation of dictionary lists into formatted records."""
 
-def chunk_iterable(iterable: Iterable[T], chunk_size: int) -> Generator[List[T], None, None]:
-    """Yield successive chunks of size chunk_size from the given iterable."""
-    if chunk_size <= 0:
-        raise ValueError("Chunk size must be greater than zero.")
-    
-    chunk = []
-    for item in iterable:
-        chunk.append(item)
-        if len(chunk) == chunk_size:
-            yield chunk
-            chunk = []
-    if chunk:
-        yield chunk
+    def __init__(self, target_key: str = "id") -> None:
+        self.target_key = target_key
 
+    def process_batch(self, data: List[Dict[str, Any]]) -> Dict[Any, Dict[str, Any]]:
+        """
+        Organizes a list of dictionaries into a lookup table.
 
-def safe_cast(value: Any, to_type: Type[T], default: T) -> T:
-    """Safely cast a value to a given type, returning the default if casting fails."""
-    try:
-        if value is None:
-            return default
-        return to_type(value)
-    except (ValueError, TypeError):
-        return default
+        Args:
+            data: A list of dictionaries containing keys to be indexed.
 
+        Returns:
+            A dictionary mapping target keys to record objects.
+        """
+        return {item[self.target_key]: item for item in data if self.target_key in item}
 
-def deep_flatten(nested_iterable: Iterable[Any]) -> Generator[Any, None, None]:
-    """Flatten a nested iterable of arbitrary depth, ignoring strings as iterables."""
-    for item in nested_iterable:
-        if isinstance(item, Iterable) and not isinstance(item, (str, bytes)):
-            yield from deep_flatten(item)
-        else:
-            yield item
+    def get_summary(self, data: List[Dict[str, Any]]) -> Dict[str, int]:
+        """
+        Calculates the frequency of target keys in the provided data.
+
+        Args:
+            data: List of data dictionaries.
+
+        Returns:
+            A summary dictionary with counts of occurrences.
+        """
+        summary: Dict[Any, int] = {}
+        for item in data:
+            key = item.get(self.target_key)
+            if key is not None:
+                summary[key] = summary.get(key, 0) + 1
+        return summary
