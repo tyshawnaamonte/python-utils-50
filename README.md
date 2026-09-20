@@ -1,54 +1,47 @@
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
 # python-utils-50
 
-`python-utils-50` is a curated collection of fifty highly efficient, zero-dependency Python utility functions designed to streamline daily development workflows. From advanced dictionary manipulation to robust file-system operations, this library eliminates repetitive boilerplate code so you can focus on building core features.
+A curated collection of production-ready Python utility functions designed to streamline repetitive development tasks. This library focuses on performance, type-safety, and minimal dependencies for everyday engineering needs.
 
 ## Features
 
-* **High-Performance Data Flattening:** Recursively flatten deeply nested dictionaries and lists with custom delimiters in a single pass.
-* **Smart File I/O:** Safely read and write JSON, YAML, and CSV files with automatic encoding detection and directory creation.
-* **Time & Date Helpers:** Convert timestamps to human-readable durations and parse ISO dates without external dependencies.
-* **Resilient Network Retries:** A lightweight decorator to automatically retry failing HTTP requests or database connections with exponential backoff.
+*   **Data Transformation**: Robust helpers for nested dictionary flattening and complex list manipulations.
+*   **Timezone-Aware Helpers**: Simplified formatting and parsing tools for UTC-based timestamp conversions.
+*   **FileSystem Shortcuts**: Context managers for recursive directory cleanup and path validation.
+*   **Functional Decorators**: Lightweight decorators for request retries, execution timing, and silent exception handling.
 
 ## Installation
 
-Install the package directly from PyPI:
+Install the package directly via pip:
 
 ```bash
 pip install python-utils-50
 ```
 
-## Quick Start
+## Basic Usage
+
+Quickly leverage the library to manage file paths or handle dictionary operations in your data pipelines:
 
 ```python
-from python_utils_50.data import flatten_dict
-from python_utils_50.decorators import retry
+from pyutils50.file_ops import safe_mkdir
+from pyutils50.data import flatten_dict
 
-# 1. Flatten a complex nested dictionary
-nested_data = {
-    "user": {
-        "profile": {
-            "name": "Alice",
-            "role": "Lead Engineer"
-        }
-    }
-}
-flat_data = flatten_dict(nested_data, separator=".")
-print(flat_data)
-# Output: {'user.profile.name': 'Alice', 'user.profile.role': 'Lead Engineer'}
+# Ensure a directory exists
+safe_mkdir("./logs/archives")
 
+# Flatten deeply nested API responses
+raw_data = {"user": {"id": 1, "meta": {"login": "admin"}}}
+clean_data = flatten_dict(raw_data, separator="_")
 
-# 2. Retry a flaky network function with exponential backoff
-@retry(retries=3, delay=2.0)
-def fetch_api_status():
-    print("Attempting to connect to the server...")
-    # Simulated API call logic here
-    return "Success"
-
-fetch_api_status()
+print(clean_data)
+# Output: {'user_id': 1, 'user_meta_login': 'admin'}
 ```
+
+## Contributing
+
+We welcome contributions! Please feel free to open an issue or submit a pull request if you have utility functions that would benefit the community.
 
 ## License
 
-This project is licensed under the MIT License.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Distributed under the MIT License. See `LICENSE` for more information.
