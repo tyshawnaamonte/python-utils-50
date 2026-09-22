@@ -1,31 +1,38 @@
-from typing import Any, Dict, List, Optional, Union
+import functools
+import time
+from typing import Callable, Any, Dict
 
-def merge_configurations(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively merge two dictionaries for configuration management."""
-    merged = base.copy()
-    for key, value in override.items():
-        if isinstance(value, dict) and key in merged and isinstance(merged[key], dict):
-            merged[key] = merge_configurations(merged[key], value)
-        else:
-            merged[key] = value
-    return merged
+# Cache for storing expensive function results
+_CACHE: Dict[str, Any] = {}
 
-def format_data_list(items: List[Any], prefix: str = "Item") -> List[str]:
-    """Convert list items into a formatted string list with prefixing."""
-    return [f"{prefix} {i}: {str(item)}" for i, item in enumerate(items, 1)]
+def memoize(func: Callable) -> Callable:
+    """Decorator to cache function results based on arguments."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs) -> Any:
+        key = f"{func.__name__}:{args}:{frozenset(kwargs.items())}"
+        if key not in _CACHE:
+            _CACHE[key] = func(*args, **kwargs)
+        return _CACHE[key]
+    return wrapper
 
-def get_nested_value(data: Dict[str, Any], path: str, default: Optional[Any] = None) -> Any:
-    """Retrieve nested dictionary values via dot-notation path."""
-    keys = path.split('.')
-    current = data
-    for key in keys:
-        if isinstance(current, dict) and key in current:
-            current = current[key]
-        else:
-            return default
-    return current
+def batch_process(items: list, chunk_size: int = 100):
+    """Generator for memory-efficient chunked list processing."""
+    for i in range(0, len(items), chunk_size):
+        yield items[i:i + chunk_size]
 
-if __name__ == "__main__":
-    config = {"app": {"debug": True, "port": 8080}}
-    updates = {"app": {"port": 9000}}
-    print(merge_configurations(config, updates))
+class PerformanceTracker:
+    """Context manager for simple execution time logging."""
+    def __init__(self, name: str):
+        self.name = name
+
+    def __enter__(self):
+        self.start = time.perf_counter()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        elapsed = time.perf_counter() - self.start
+        print(f"[PERF] {self.name} took {elapsed:.4f} seconds")
+
+def clear_cache() -> None:
+    """Manual memory management for function caches."""
+    _CACHE.clear()
