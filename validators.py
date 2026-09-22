@@ -1,37 +1,27 @@
-import logging
-from typing import Any, Optional
+import re
+from typing import Any
 
-logger = logging.getLogger(__name__)
+def is_email(value: str) -> bool:
+    """Validate if the provided string is a standard email format."""
+    email_pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+    return bool(re.match(email_pattern, value))
 
-def validate_input(data: Any, expected_type: type) -> Optional[Any]:
-    """Ensures input matches expected type with edge case handling."""
-    try:
-        if data is None:
-            raise ValueError("input data cannot be null")
-        
-        if not isinstance(data, expected_type):
-            raise TypeError(f"expected {expected_type.__name__}, got {type(data).__name__}")
-            
-        return data
-    except (ValueError, TypeError) as e:
-        logger.error(f"validation failure: {e}")
-        return None
+def is_not_empty(value: Any) -> bool:
+    """Check if the input is not None and not an empty collection."""
+    if value is None:
+        return False
+    if isinstance(value, (str, list, dict, set, tuple)):
+        return len(value) > 0
+    return True
 
-def safe_int_conversion(value: Any, default: int = 0) -> int:
-    """Converts values to int with fallback for errors."""
-    try:
-        if isinstance(value, (int, float)):
-            return int(value)
-        if isinstance(value, str):
-            return int(value.strip())
-        raise ValueError("unsupported type for conversion")
-    except (ValueError, TypeError, AttributeError) as e:
-        logger.warning(f"conversion failed for {value}: {e}. returning default.")
-        return default
+def is_in_range(value: int, min_val: int, max_val: int) -> bool:
+    """Verify if a number falls within the inclusive specified range."""
+    return isinstance(value, int) and min_val <= value <= max_val
 
-def validate_non_empty_string(value: Any) -> str:
-    """Checks if string is not empty or whitespace only."""
-    if not isinstance(value, str):
-        return ""
-    stripped = value.strip()
-    return stripped if stripped else ""
+def is_alphanumeric(value: str) -> bool:
+    """Verify if the string contains only alphanumeric characters."""
+    return value.isalnum()
+
+def validate_schema(data: dict, required_keys: list) -> bool:
+    """Confirm that all required keys are present in the dictionary."""
+    return all(key in data for key in required_keys)
