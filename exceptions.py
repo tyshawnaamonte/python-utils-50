@@ -1,39 +1,34 @@
-"""
-Custom exception hierarchy for handling common edge cases across utilities.
-"""
+class UtilityError(Exception):
+    """Base exception for python-utils-50."""
+    pass
 
-class PythonUtilsError(Exception):
-    """Base exception class for all custom errors in the utility suite."""
-    def __init__(self, message: str, error_code: str = "GENERIC_ERROR"):
-        super().__init__(message)
-        self.message = message
-        self.error_code = error_code
+class ConfigurationError(UtilityError):
+    """Raised when configuration values are missing or invalid."""
+    pass
 
-    def __str__(self) -> str:
-        return f"[{self.error_code}] {self.message}"
+class ValidationError(UtilityError):
+    """Raised when input data fails validation checks."""
+    pass
 
+def safe_execute(func, *args, **kwargs):
+    """Executes a function and handles common operational errors."""
+    try:
+        return func(*args, **kwargs)
+    except (ValueError, TypeError) as e:
+        raise ValidationError(f"Validation failure: {e}") from e
+    except Exception as e:
+        raise UtilityError(f"Unexpected utility failure: {e}") from e
 
-class ValidationError(PythonUtilsError):
-    """Raised when input parameters fail validation checks."""
-    def __init__(self, message: str, field_name: str = None, invalid_value: object = None):
-        self.field_name = field_name
-        self.invalid_value = invalid_value
-        suffix = f" (Field: '{field_name}' got invalid value: {invalid_value})" if field_name else ""
-        super().__init__(f"{message}{suffix}", error_code="VALIDATION_ERROR")
+# Standardized error codes for cross-module consistency
+ERR_INVALID_INPUT = 1001
+ERR_MISSING_CONFIG = 1002
+ERR_TIMEOUT = 1003
 
-
-class ConfigurationError(PythonUtilsError):
-    """Raised when missing or malformed configuration blocks are detected."""
-    def __init__(self, message: str, config_key: str = None):
-        self.config_key = config_key
-        suffix = f" (Missing or invalid key: '{config_key}')" if config_key else ""
-        super().__init__(f"{message}{suffix}", error_code="CONFIGURATION_ERROR")
-
-
-class ResourceUnavailableError(PythonUtilsError):
-    """Raised when files, APIs, or subprocess resources cannot be accessed."""
-    def __init__(self, message: str, resource_identifier: str = None, transient: bool = True):
-        self.resource_identifier = resource_identifier
-        self.transient = transient
-        suffix = f" (Resource: '{resource_identifier}', Retryable: {transient})" if resource_identifier else ""
-        super().__init__(f"{message}{suffix}", error_code="RESOURCE_UNAVAILABLE")
+def get_error_message(code):
+    """Maps error codes to user-friendly messages."""
+    messages = {
+        ERR_INVALID_INPUT: "Input provided is malformed or invalid",
+        ERR_MISSING_CONFIG: "Required configuration key not found",
+        ERR_TIMEOUT: "Operation timed out during execution"
+    }
+    return messages.get(code, "An unknown error occurred")
