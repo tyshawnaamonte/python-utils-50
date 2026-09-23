@@ -1,33 +1,38 @@
-import os
 import json
-from typing import Any, Dict, Optional
+import os
+from typing import Any, Dict
 
-
-class ConfigManager:
-    """Simple configuration manager loading from dict or environment variables."""
-
-    def __init__(self, defaults: Optional[Dict[str, Any]] = None):
-        self._config: Dict[str, Any] = defaults.copy() if defaults else {}
-
-    def get(self, key: str, default: Any = None) -> Any:
-        """Retrieve a configuration value, checking environment variables first."""
-        env_val = os.getenv(key.upper())
-        if env_val is not None:
-            return env_val
-        return self._config.get(key, default)
-
-    def set(self, key: str, value: Any) -> None:
-        """Set a configuration value in memory."""
-        self._config[key] = value
+class ConfigLoader:
+    def __init__(self, default_config: Dict[str, Any]):
+        self.config = default_config
 
     def load_from_json(self, filepath: str) -> None:
-        """Load configuration key-value pairs from a JSON file."""
-        if os.path.exists(filepath):
-            with open(filepath, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, dict):
-                    self._config.update(data)
+        """Updates internal config with values from a JSON file."""
+        if not os.path.exists(filepath):
+            return
+        
+        try:
+            with open(filepath, 'r') as f:
+                user_config = json.load(f)
+                self._merge(self.config, user_config)
+        except (json.JSONDecodeError, IOError):
+            pass
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Return a copy of the current configuration dictionary."""
-        return self._config.copy()
+    def _merge(self, base: Dict[str, Any], update: Dict[str, Any]) -> None:
+        """Recursively update nested configuration dictionaries."""
+        for key, value in update.items():
+            if isinstance(value, dict) and key in base and isinstance(base[key], dict):
+                self._merge(base[key], value)
+            else:
+                base[key] = value
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Retrieve configuration value by key."""
+        return self.config.get(key, default)
+
+# Example usage:
+if __name__ == '__main__':
+    defaults = {'host': 'localhost', 'port': 8080, 'debug': False}
+    loader = ConfigLoader(defaults)
+    loader.load_from_json('settings.json')
+    print(f"Active host: {loader.get('host')}")
