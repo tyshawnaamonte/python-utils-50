@@ -1,36 +1,34 @@
-from typing import List, Dict, Any, Optional
+import functools
+from typing import Callable, Any, Dict
+
+# Cache for compute-intensive transformations to optimize lookup times
+_TRANSFORM_CACHE: Dict[tuple, Any] = {}
+
+def memoize_transform(func: Callable) -> Callable:
+    """Decorator to cache function results based on input arguments."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs) -> Any:
+        key = (func.__name__, args, frozenset(kwargs.items()))
+        if key not in _TRANSFORM_CACHE:
+            _TRANSFORM_CACHE[key] = func(*args, **kwargs)
+        return _TRANSFORM_CACHE[key]
+    return wrapper
 
 class DataProcessor:
-    """Handles transformation of dictionary lists into formatted records."""
+    """Core processor class with optimized batch data handling."""
+    
+    def __init__(self, settings: Dict[str, Any] = None):
+        self.settings = settings or {}
 
-    def __init__(self, target_key: str = "id") -> None:
-        self.target_key = target_key
+    @memoize_transform
+    def process_item(self, data: str) -> str:
+        """Simulates complex processing logic with memoization."""
+        return data.strip().lower()
 
-    def process_batch(self, data: List[Dict[str, Any]]) -> Dict[Any, Dict[str, Any]]:
-        """
-        Organizes a list of dictionaries into a lookup table.
+    def batch_process(self, items: list) -> list:
+        """Performance-focused batch iteration using list comprehensions."""
+        return [self.process_item(item) for item in items if item]
 
-        Args:
-            data: A list of dictionaries containing keys to be indexed.
-
-        Returns:
-            A dictionary mapping target keys to record objects.
-        """
-        return {item[self.target_key]: item for item in data if self.target_key in item}
-
-    def get_summary(self, data: List[Dict[str, Any]]) -> Dict[str, int]:
-        """
-        Calculates the frequency of target keys in the provided data.
-
-        Args:
-            data: List of data dictionaries.
-
-        Returns:
-            A summary dictionary with counts of occurrences.
-        """
-        summary: Dict[Any, int] = {}
-        for item in data:
-            key = item.get(self.target_key)
-            if key is not None:
-                summary[key] = summary.get(key, 0) + 1
-        return summary
+    def clear_cache(self) -> None:
+        """Explicit cache eviction to manage memory footprint."""
+        _TRANSFORM_CACHE.clear()
