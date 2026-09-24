@@ -1,37 +1,43 @@
-import json
-import os
-from typing import Any, Dict, Optional
+import logging
+import functools
+from typing import Callable, Any, Optional
 
-def load_json_file(path: str) -> Dict[str, Any]:
-    """Safe loading of JSON configuration files."""
-    if not os.path.exists(path):
-        return {}
-    try:
-        with open(path, 'r') as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
-        return {}
+logger = logging.getLogger(__name__)
 
-def save_json_file(path: str, data: Dict[str, Any]) -> bool:
-    """Atomic-like saving of dictionary to JSON."""
-    try:
-        with open(path, 'w') as f:
-            json.dump(data, f, indent=4)
-        return True
-    except IOError:
-        return False
+class ExecutionError(Exception):
+    """Custom exception for handler process failures."""
+    pass
 
-def get_env_variable(key: str, default: Optional[str] = None) -> Optional[str]:
-    """Fetch environment variable with fallback default."""
-    return os.environ.get(key, default)
+def safe_execute(func: Callable) -> Callable:
+    """Decorator for standardized error handling and logging."""
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Optional[Any]:
+        try:
+            return func(*args, **kwargs)
+        except ValueError as ve:
+            logger.error(f"Invalid input for {func.__name__}: {ve}")
+        except ConnectionError as ce:
+            logger.critical(f"Network failure during {func.__name__}: {ce}")
+        except Exception as e:
+            logger.exception(f"Unexpected error in {func.__name__}: {e}")
+        return None
+    return wrapper
 
-def flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
-    """Flatten nested dictionary for flat config structures."""
-    items = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
+@safe_execute
+def process_data(data: Any) -> Any:
+    """Example processor with explicit edge case validation."""
+    if not data:
+        raise ValueError("Empty data payload provided")
+    if not isinstance(data, dict):
+        raise TypeError("Dictionary required for processing")
+    return {k: v for k, v in data.items() if v is not None}
+
+def retry_operation(operation: Callable, retries: int = 3) -> Any:
+    """Basic retry mechanism for transient failure handling."""
+    for attempt in range(retries):
+        try:
+            return operation()
+        except Exception:
+            if attempt == retries - 1:
+                raise
+    return None
