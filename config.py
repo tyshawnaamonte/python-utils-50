@@ -3,36 +3,32 @@ import os
 from typing import Any, Dict
 
 class ConfigLoader:
-    def __init__(self, default_config: Dict[str, Any]):
-        self.config = default_config
+    """Handles loading of configuration files with default overrides."""
 
-    def load_from_json(self, filepath: str) -> None:
-        """Updates internal config with values from a JSON file."""
+    def __init__(self, defaults: Dict[str, Any] = None):
+        self.defaults = defaults or {}
+
+    def load(self, filepath: str) -> Dict[str, Any]:
+        """Loads json configuration merging it with default values."""
+        config = self.defaults.copy()
+
         if not os.path.exists(filepath):
-            return
-        
+            return config
+
         try:
             with open(filepath, 'r') as f:
-                user_config = json.load(f)
-                self._merge(self.config, user_config)
-        except (json.JSONDecodeError, IOError):
-            pass
+                file_data = json.load(f)
+                config.update(file_data)
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"Warning: failed to load config file: {e}")
+            
+        return config
 
-    def _merge(self, base: Dict[str, Any], update: Dict[str, Any]) -> None:
-        """Recursively update nested configuration dictionaries."""
-        for key, value in update.items():
-            if isinstance(value, dict) and key in base and isinstance(base[key], dict):
-                self._merge(base[key], value)
-            else:
-                base[key] = value
-
-    def get(self, key: str, default: Any = None) -> Any:
-        """Retrieve configuration value by key."""
-        return self.config.get(key, default)
-
-# Example usage:
-if __name__ == '__main__':
-    defaults = {'host': 'localhost', 'port': 8080, 'debug': False}
-    loader = ConfigLoader(defaults)
-    loader.load_from_json('settings.json')
-    print(f"Active host: {loader.get('host')}")
+    def load_from_env(self, prefix: str) -> Dict[str, Any]:
+        """Extracts configuration settings from environment variables."""
+        env_config = {}
+        for key, value in os.environ.items():
+            if key.startswith(prefix):
+                config_key = key[len(prefix):].lower()
+                env_config[config_key] = value
+        return env_config
