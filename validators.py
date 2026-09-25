@@ -1,34 +1,29 @@
-import logging
+import re
+from typing import Any
 
-logger = logging.getLogger(__name__)
+def is_email(email: str) -> bool:
+    """Validate standard email format using regex."""
+    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+    return bool(re.match(pattern, email))
 
-def validate_input_data(data: dict, required_keys: list) -> bool:
-    """Ensures payload contains necessary keys and values."""
-    if not isinstance(data, dict):
-        logger.error("Invalid input type: expected dict")
+def is_non_empty_string(value: Any) -> bool:
+    """Check if input is a non-empty, stripped string."""
+    return isinstance(value, str) and bool(value.strip())
+
+def is_port(value: Any) -> bool:
+    """Validate network port range (1-65535)."""
+    try:
+        port = int(value)
+        return 1 <= port <= 65535
+    except (ValueError, TypeError):
         return False
 
-    for key in required_keys:
-        if key not in data or data[key] is None:
-            logger.warning(f"Missing or null field: {key}")
-            return False
-            
-    return True
+def validate_dict_keys(data: dict, required_keys: list) -> bool:
+    """Verify all keys exist in the provided dictionary."""
+    if not isinstance(data, dict):
+        return False
+    return all(key in data for key in required_keys)
 
-def process_main_loop(items: list):
-    """Main loop entry point with validation logic."""
-    required = ['id', 'payload']
-    processed = []
-
-    for item in items:
-        if validate_input_data(item, required):
-            # Logic for valid item processing
-            try:
-                item['processed'] = True
-                processed.append(item)
-            except Exception as e:
-                logger.error(f"Unexpected error during processing: {e}")
-        else:
-            logger.info("Skipping invalid item in loop")
-            
-    return processed
+def is_alphanumeric(value: str) -> bool:
+    """Check if string contains only alphanumeric characters."""
+    return value.isalnum()
