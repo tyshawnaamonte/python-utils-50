@@ -4,24 +4,30 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def retry_network_operation(max_attempts=3, delay=2, backoff=2):
-    """Decorator for retrying functions on exception."""
+def retry(max_attempts=3, delay=1.0, backoff=2, exceptions=(Exception,)):
+    """
+    Decorator for retrying functions with exponential backoff.
+    
+    :param max_attempts: Maximum number of retry attempts
+    :param delay: Initial delay between retries in seconds
+    :param backoff: Multiplier for the delay after each failure
+    :param exceptions: Tuple of exceptions to catch and retry on
+    """
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            attempts = 0
             current_delay = delay
-            while attempts < max_attempts:
+            for attempt in range(1, max_attempts + 1):
                 try:
                     return func(*args, **kwargs)
-                except (ConnectionError, TimeoutError) as e:
-                    attempts += 1
-                    if attempts == max_attempts:
-                        logger.error(f"Failed after {max_attempts} attempts")
-                        raise e
+                except exceptions as e:
+                    if attempt == max_attempts:
+                        logger.error(f"Failed after {max_attempts} attempts: {e}")
+                        raise
                     
-                    logger.warning(f"Retry {attempts}/{max_attempts} due to {e}")
+                    logger.warning(f"Attempt {attempt} failed, retrying in {current_delay}s...")
                     time.sleep(current_delay)
                     current_delay *= backoff
+            return None
         return wrapper
     return decorator
