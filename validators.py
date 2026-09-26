@@ -1,29 +1,31 @@
-import re
-from typing import Any
+import functools
+from typing import Callable, Any, Dict
 
-def is_email(email: str) -> bool:
-    """Validate standard email format using regex."""
-    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-    return bool(re.match(pattern, email))
+_CACHE_SIZE = 1024
 
-def is_non_empty_string(value: Any) -> bool:
-    """Check if input is a non-empty, stripped string."""
-    return isinstance(value, str) and bool(value.strip())
-
-def is_port(value: Any) -> bool:
-    """Validate network port range (1-65535)."""
-    try:
-        port = int(value)
-        return 1 <= port <= 65535
-    except (ValueError, TypeError):
+# Lru cache for validator results to reduce computation overhead
+# on recurring validation requests in the core module.
+@functools.lru_cache(maxsize=_CACHE_SIZE)
+def validate_schema(data: tuple, schema: tuple) -> bool:
+    """Validates input data against a provided schema structure."""
+    if len(data) != len(schema):
         return False
+    return all(isinstance(d, s) for d, s in zip(data, schema))
 
-def validate_dict_keys(data: dict, required_keys: list) -> bool:
-    """Verify all keys exist in the provided dictionary."""
-    if not isinstance(data, dict):
-        return False
-    return all(key in data for key in required_keys)
+class DataValidator:
+    """Core validator utilizing memoization for performance optimization."""
+    def __init__(self):
+        self._memo = {}
 
-def is_alphanumeric(value: str) -> bool:
-    """Check if string contains only alphanumeric characters."""
-    return value.isalnum()
+    def check(self, payload: Dict[str, Any], schema: Dict[str, type]) -> bool:
+        """Converts dictionary to hashable items for cached validation."""
+        items = tuple(sorted(payload.items()))
+        types = tuple(sorted(schema.items()))
+        return validate_schema(items, types)
+
+# Global validator instance for performance sharing
+validator = DataValidator()
+
+def quick_check(data: Dict, schema: Dict) -> bool:
+    """Practical entry point for high-speed validation."""
+    return validator.check(data, schema)
