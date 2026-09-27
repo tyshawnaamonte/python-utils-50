@@ -1,28 +1,35 @@
-import time
-import functools
+import os
 import logging
-from typing import Callable, Any, Type, Tuple
+from typing import Any, List, Optional
 
+# Configure standard logging for utility operations
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def retry_on_failure(exceptions: Tuple[Type[Exception], ...] = (Exception,), 
-                     max_retries: int = 3, 
-                     delay: float = 1.0):
-    """Decorator for retrying network operations with exponential backoff."""
-    def decorator(func: Callable):
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            last_exception = None
-            current_delay = delay
-            for attempt in range(max_retries):
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as e:
-                    last_exception = e
-                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {current_delay}s...")
-                    time.sleep(current_delay)
-                    current_delay *= 2
-            logger.error(f"Function {func.__name__} failed after {max_retries} attempts")
-            raise last_exception
-        return wrapper
-    return decorator
+def get_env_variable(key: str, default: Optional[str] = None) -> str:
+    """Retrieve environment variable with fallback default."""
+    return os.environ.get(key, default) or ""
+
+def filter_none_values(data: dict) -> dict:
+    """Remove keys with None values from a dictionary."""
+    return {k: v for k, v in data.items() if v is not None}
+
+def chunk_list(items: List[Any], size: int) -> List[List[Any]]:
+    """Split a list into smaller chunks of fixed size."""
+    if size <= 0:
+        raise ValueError("Chunk size must be positive")
+    return [items[i:i + size] for i in range(0, len(items), size)]
+
+class DataProcessor:
+    """Base class for data manipulation tasks."""
+    def __init__(self, items: List[Any]):
+        self.items = items
+
+    def process_and_clean(self) -> List[Any]:
+        """Standardizes internal list by removing empty entries."""
+        return [item for item in self.items if item]
+
+if __name__ == "__main__":
+    # Example usage for verification
+    processor = DataProcessor(["a", "", "b", None, "c"])
+    logger.info(f"Processed result: {processor.process_and_clean()}")
