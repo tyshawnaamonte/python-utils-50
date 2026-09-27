@@ -1,28 +1,26 @@
 import os
 from typing import Final
 
-# System default configurations
-DEFAULT_ENCODING: Final[str] = 'utf-8'
-DEFAULT_TIMEOUT: Final[int] = 30
-
-# Directory and path defaults
+# Application path configurations
 BASE_DIR: Final[str] = os.path.dirname(os.path.abspath(__file__))
 LOG_DIR: Final[str] = os.path.join(BASE_DIR, 'logs')
 
-# Common validation patterns
-EMAIL_REGEX: Final[str] = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-
-# Environment variable keys
-ENV_VAR_PREFIX: Final[str] = 'PYUTILS_'
-
-# Default retry strategy parameters
+# Processing constraints
+DEFAULT_TIMEOUT: Final[int] = 30
 MAX_RETRIES: Final[int] = 3
-BACKOFF_FACTOR: Final[float] = 0.5
+CHUNK_SIZE: Final[int] = 4096
 
-def get_app_version() -> str:
-    """Return the project version constant."""
-    return "1.0.0"
+# Formatting defaults
+DATE_FORMAT: Final[str] = '%Y-%m-%d %H:%M:%S'
+ENCODING: Final[str] = 'utf-8'
 
-def is_debug_mode() -> bool:
-    """Check if application is running in debug mode."""
-    return os.getenv('DEBUG', 'False').lower() in ('true', '1', 't')
+# Status codes for internal handlers
+STATUS_SUCCESS: Final[int] = 200
+STATUS_ERROR: Final[int] = 500
+
+def get_environment_config() -> dict:
+    """Retrieve base configuration settings from environment."""
+    return {
+        "timeout": int(os.getenv("APP_TIMEOUT", DEFAULT_TIMEOUT)),
+        "debug": os.getenv("APP_DEBUG", "False") == "True"
+    }
