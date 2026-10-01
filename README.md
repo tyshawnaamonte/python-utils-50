@@ -1,47 +1,40 @@
 # python-utils-50
 
-A curated collection of production-ready Python utility functions designed to streamline repetitive development tasks. This library focuses on performance, type-safety, and minimal dependencies for everyday engineering needs.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+`python-utils-50` is a curated collection of fifty micro-utilities designed to eliminate boilerplate code in everyday Python projects. From robust nested dictionary merging to safe directory creation, this library provides highly optimized, zero-dependency helpers that streamline your development workflow.
 
 ## Features
 
-*   **Data Transformation**: Robust helpers for nested dictionary flattening and complex list manipulations.
-*   **Timezone-Aware Helpers**: Simplified formatting and parsing tools for UTC-based timestamp conversions.
-*   **FileSystem Shortcuts**: Context managers for recursive directory cleanup and path validation.
-*   **Functional Decorators**: Lightweight decorators for request retries, execution timing, and silent exception handling.
+* **Type-Safe Deep Merging**: Recursively combine nested dictionaries without side effects or mutating the original structures.
+* **Resilient File I/O**: Safe wrapper functions that automatically handle and generate missing nested directories during file write operations.
+* **Smart Datetime Parsing**: Out-of-the-box parsing for fifty common string-based timestamp formats directly into standard Python datetime objects.
 
 ## Installation
 
-Install the package directly via pip:
+Install the package directly from PyPI:
 
 ```bash
 pip install python-utils-50
 ```
 
-## Basic Usage
+## Usage
 
-Quickly leverage the library to manage file paths or handle dictionary operations in your data pipelines:
+Here is a quick example of how to merge configurations and write the output safely:
 
 ```python
-from pyutils50.file_ops import safe_mkdir
-from pyutils50.data import flatten_dict
+from python_utils_50.dicts import deep_merge
+from python_utils_50.files import safe_write
 
-# Ensure a directory exists
-safe_mkdir("./logs/archives")
+# Combine nested configuration dictionaries
+default_config = {"server": {"host": "127.0.0.1", "port": 80}}
+user_config = {"server": {"port": 8080}}
+final_config = deep_merge(default_config, user_config)
 
-# Flatten deeply nested API responses
-raw_data = {"user": {"id": 1, "meta": {"login": "admin"}}}
-clean_data = flatten_dict(raw_data, separator="_")
-
-print(clean_data)
-# Output: {'user_id': 1, 'user_meta_login': 'admin'}
+# Output the result, automatically creating any missing parent directories
+safe_write("config/prod/settings.json", str(final_config))
 ```
-
-## Contributing
-
-We welcome contributions! Please feel free to open an issue or submit a pull request if you have utility functions that would benefit the community.
 
 ## License
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-Distributed under the MIT License. See `LICENSE` for more information.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
