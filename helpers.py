@@ -1,34 +1,74 @@
-import logging
-from typing import Any, Optional
+from typing import Any, Dict, Generator, Iterable, List, Tuple, TypeVar
 
-logger = logging.getLogger(__name__)
+T = TypeVar("T")
 
-def validate_payload(data: Any) -> Optional[dict]:
-    """Validates input structure and required fields."""
-    if not isinstance(data, dict):
-        logger.error("Invalid input type: expected dict")
-        return None
-    
-    required = ['id', 'action']
-    for key in required:
-        if key not in data:
-            logger.error(f"Missing required field: {key}")
-            return None
-            
-    if not isinstance(data['id'], int) or data['id'] < 0:
-        logger.error("Invalid id format: must be positive integer")
-        return None
-        
-    return data
 
-def process_items(items: list):
-    """Main processing loop with validation."""
-    for item in items:
-        validated = validate_payload(item)
-        if not validated:
-            continue
-            
-        try:
-            print(f"Processing item {validated['id']}: {validated['action']}")
-        except Exception as e:
-            logger.exception(f"Unexpected error processing item {item.get('id')}: {e}")
+def chunk_iterable(
+    iterable: Iterable[T], size: int
+) -> Generator[List[T], None, None]:
+    """Yield successive chunks of specified size from an iterable.
+
+    Args:
+        iterable: The collection or iterator to slice into chunks.
+        size: Maximum number of elements per chunk. Must be greater than zero.
+
+    Yields:
+        Lists containing up to `size` elements from the original iterable.
+    """
+    if size <= 0:
+        raise ValueError("Chunk size must be greater than zero.")
+
+    chunk: List[T] = []
+    for item in iterable:
+        chunk.append(item)
+        if len(chunk) == size:
+            yield chunk
+            chunk = []
+    if chunk:
+        yield chunk
+
+
+def flatten_dict(
+    d: Dict[str, Any], parent_key: str = "", sep: str = "."
+) -> Dict[str, Any]:
+    """Flatten a nested dictionary by concatenating keys with a separator.
+
+    Args:
+        d: The nested dictionary to flatten.
+        parent_key: Prefix for flattened keys, used during recursion.
+        sep: String separator used between nested keys.
+
+    Returns:
+        A single-level dictionary with compound keys.
+    """
+    items: List[Tuple[str, Any]] = []
+    for key, value in d.items():
+        new_key = f"{parent_key}{sep}{key}" if parent_key else str(key)
+        if isinstance(value, dict):
+            items.extend(flatten_dict(value, new_key, sep=sep).items())
+        else:
+            items.append((new_key, value))
+    return dict(items)
+
+
+def format_bytes(size_in_bytes: int) -> str:
+    """Convert a byte count into a human-readable string representation.
+
+    Args:
+        size_in_bytes: Non-negative integer representing size in bytes.
+
+    Returns:
+        Formatted string representation with units (e.g., '1.50 MB').
+    """
+    if size_in_bytes < 0:
+        raise ValueError("Byte size cannot be negative.")
+
+    units = ["B", "KB", "MB", "GB", "TB", "PB"]
+    size = float(size_in_bytes)
+    unit_index = 0
+
+    while size >= 1024.0 and unit_index < len(units) - 1:
+        size /= 1024.0
+        unit_index += 1
+
+    return f"{size:.2f} {units[unit_index]}"
