@@ -1,59 +1,34 @@
-import re
-from typing import Any, Dict, Union
-
-
-class ValidationError(ValueError):
-    """Custom exception raised when data validation fails."""
-
+class ValidationError(Exception):
+    """Custom exception for input validation failures."""
     pass
 
+def validate_input(data):
+    """
+    Validates core input types and structures for the processing loop.
+    Ensures data is a dictionary with required keys and non-empty values.
+    """
+    if not isinstance(data, dict):
+        raise ValidationError(f"Expected dict, got {type(data).__name__}")
 
-class DataValidator:
-    """Utility class to validate input payloads in the main processing loop."""
+    required_keys = {'id', 'payload'}
+    if not required_keys.issubset(data.keys()):
+        missing = required_keys - data.keys()
+        raise ValidationError(f"Missing required keys: {missing}")
 
-    @staticmethod
-    def validate_record(
-        record: Dict[str, Any], required_fields: Dict[str, type]
-    ) -> None:
-        """Validates a dictionary record against specified field names and types.
+    if not data.get('id') or not isinstance(data['payload'], (str, list)):
+        raise ValidationError("Invalid payload format or empty identifier")
 
-        Raises ValidationError if verification fails.
-        """
-        if not isinstance(record, dict):
-            raise ValidationError(
-                f"Record must be a dictionary, got {type(record).__name__}"
-            )
+    return True
 
-        for field, expected_type in required_fields.items():
-            if field not in record:
-                raise ValidationError(
-                    f"Missing required field: '{field}'"
-                )
-
-            val = record[field]
-            if not isinstance(val, expected_type):
-                raise ValidationError(
-                    f"Field '{field}' expected type {expected_type.__name__}, got {type(val).__name__}"
-                )
-
-    @staticmethod
-    def validate_numeric_range(
-        value: Union[int, float],
-        min_val: Union[int, float, None] = None,
-        max_val: Union[int, float, None] = None,
-    ) -> None:
-        """Ensures a numerical value is within specified bounds."""
-        if not isinstance(value, (int, float)):
-            raise ValidationError(
-                f"Value must be a number, got {type(value).__name__}"
-            )
-
-        if min_val is not None and value < min_val:
-            raise ValidationError(
-                f"Value {value} is below the limit of {min_val}"
-            )
-
-        if max_val is not None and value > max_val:
-            raise ValidationError(
-                f"Value {value} is above the limit of {max_val}"
-            )
+def process_with_validation(stream):
+    """
+    Main loop handler integrating strict validation before processing items.
+    """
+    for item in stream:
+        try:
+            if validate_input(item):
+                # Simulate logic once validated
+                print(f"Processing item {item['id']}")
+        except ValidationError as e:
+            print(f"Skipping invalid entry: {e}")
+            continue
