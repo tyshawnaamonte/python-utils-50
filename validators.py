@@ -1,34 +1,38 @@
-class ValidationError(Exception):
-    """Custom exception for input validation failures."""
-    pass
+import re
 
-def validate_input(data):
-    """
-    Validates core input types and structures for the processing loop.
-    Ensures data is a dictionary with required keys and non-empty values.
-    """
+def validate_input_data(data: dict) -> bool:
+    """Validates dictionary structure and contents for processing."""
+    required_keys = ['id', 'payload', 'timestamp']
+    
     if not isinstance(data, dict):
-        raise ValidationError(f"Expected dict, got {type(data).__name__}")
+        return False
 
-    required_keys = {'id', 'payload'}
-    if not required_keys.issubset(data.keys()):
-        missing = required_keys - data.keys()
-        raise ValidationError(f"Missing required keys: {missing}")
+    # Check required fields
+    if not all(key in data for key in required_keys):
+        return False
 
-    if not data.get('id') or not isinstance(data['payload'], (str, list)):
-        raise ValidationError("Invalid payload format or empty identifier")
+    # Validate ID format (alphanumeric)
+    if not re.match(r'^[a-zA-Z0-9]+$', str(data['id'])):
+        return False
+
+    # Validate payload type
+    if not isinstance(data['payload'], (str, dict, list)):
+        return False
 
     return True
 
-def process_with_validation(stream):
-    """
-    Main loop handler integrating strict validation before processing items.
-    """
-    for item in stream:
-        try:
-            if validate_input(item):
-                # Simulate logic once validated
-                print(f"Processing item {item['id']}")
-        except ValidationError as e:
-            print(f"Skipping invalid entry: {e}")
-            continue
+def sanitize_input(value: str) -> str:
+    """Basic sanitization for string inputs."""
+    if not isinstance(value, str):
+        return str(value)
+    return value.strip()[:256]
+
+# Main processing loop utility
+def process_stream(data_stream: list):
+    """Filter and process validated input items."""
+    valid_items = []
+    for entry in data_stream:
+        if validate_input_data(entry):
+            entry['payload'] = sanitize_input(entry['payload'])
+            valid_items.append(entry)
+    return valid_items
