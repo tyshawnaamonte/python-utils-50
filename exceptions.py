@@ -1,28 +1,35 @@
-class UtilsError(Exception):
-    """Base exception for python-utils-50 package."""
+import logging
+from typing import Any, Optional
 
-class ConfigurationError(UtilsError):
-    """Raised when configuration validation fails."""
+# Logger setup for application errors
+logger = logging.getLogger(__name__)
 
-class ValidationError(UtilsError):
-    """Raised when input validation fails."""
+class BaseAppError(Exception):
+    """Custom base exception for project-wide error tracking."""
+    def __init__(self, message: str, code: Optional[int] = None):
+        super().__init__(message)
+        self.code = code
 
-class ProcessingError(UtilsError):
-    """Raised when data transformation fails."""
+class ConfigurationError(BaseAppError):
+    """Raised when project configuration is missing or invalid."""
 
-def raise_if_none(value, message="Value cannot be None"):
-    """Check if value is None and raise ValidationError."""
-    if value is None:
-        raise ValidationError(message)
-    return value
+class DataProcessingError(BaseAppError):
+    """Raised during unexpected failures in core data operations."""
 
-def wrap_exceptions(func):
-    """Decorator to catch general exceptions and re-raise as UtilsError."""
-    def wrapper(*args, **kwargs):
+def handle_execution(func):
+    """Decorator to catch edge case errors during function execution."""
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return func(*args, **kwargs)
-        except UtilsError:
-            raise
+        except (ValueError, TypeError) as e:
+            logger.error(f"Invalid input data in {func.__name__}: {e}")
+            raise DataProcessingError(f"Input validation failed: {str(e)}")
         except Exception as e:
-            raise UtilsError(f"Unexpected error in {func.__name__}: {e}") from e
+            logger.critical(f"Unhandled exception in {func.__name__}: {e}")
+            raise
     return wrapper
+
+def validate_not_none(value: Any, name: str) -> None:
+    """Utility for checking null edge cases."""
+    if value is None:
+        raise ValueError(f"Parameter '{name}' cannot be None")
