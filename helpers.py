@@ -1,34 +1,35 @@
-from typing import List, Any, Optional, Dict
-import json
+import functools
+import time
+from typing import Callable, Any, Dict
 
-def flatten_list(nested_list: List[Any]) -> List[Any]:
-    """Flatten a multi-dimensional list into a single list."""
-    flat = []
-    for item in nested_list:
-        if isinstance(item, list):
-            flat.extend(flatten_list(item))
-        else:
-            flat.append(item)
-    return flat
+_CACHE: Dict[tuple, Any] = {}
 
-def safe_json_load(data: str, default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """Parse json string safely with a default return value."""
-    try:
-        return json.loads(data)
-    except (ValueError, TypeError):
-        return default or {}
+def memoize(func: Callable) -> Callable:
+    """Decorator for caching function results based on arguments."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs) -> Any:
+        key = (func.__name__, args, frozenset(kwargs.items()))
+        if key not in _CACHE:
+            _CACHE[key] = func(*args, **kwargs)
+        return _CACHE[key]
+    return wrapper
 
-def chunk_iterable(items: List[Any], size: int) -> List[List[Any]]:
-    """Split a list into smaller chunks of a fixed size."""
-    if size <= 0:
-        raise ValueError("Chunk size must be greater than zero.")
-    return [items[i:i + size] for i in range(0, len(items), size)]
+def batch_process(items: list, chunk_size: int = 100):
+    """Generator to yield chunks for memory-efficient processing."""
+    for i in range(0, len(items), chunk_size):
+        yield items[i:i + chunk_size]
 
-def get_nested_key(data: Dict[str, Any], keys: List[str]) -> Any:
-    """Access deeply nested dictionaries via a list of keys."""
-    current = data
-    for key in keys:
-        if not isinstance(current, dict) or key not in current:
-            return None
-        current = current[key]
-    return current
+def timing_decorator(func: Callable) -> Callable:
+    """Utility for measuring function execution latency."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        result = func(*args, **kwargs)
+        duration = time.perf_counter() - start
+        print(f"DEBUG: {func.__name__} took {duration:.4f}s")
+        return result
+    return wrapper
+
+def clear_cache() -> None:
+    """Manual memory reclamation for the internal cache."""
+    _CACHE.clear()
