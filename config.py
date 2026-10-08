@@ -3,7 +3,7 @@ import os
 from typing import Any, Dict
 
 def load_config(filepath: str, defaults: Dict[str, Any]) -> Dict[str, Any]:
-    """Loads JSON configuration and merges with provided defaults."""
+    """Load configuration from a JSON file with fallback defaults."""
     config = defaults.copy()
 
     if not os.path.exists(filepath):
@@ -12,23 +12,25 @@ def load_config(filepath: str, defaults: Dict[str, Any]) -> Dict[str, Any]:
     try:
         with open(filepath, 'r') as f:
             user_config = json.load(f)
-            config.update(user_config)
+            if isinstance(user_config, dict):
+                config.update(user_config)
     except (json.JSONDecodeError, IOError):
         pass
 
     return config
 
-def save_config(filepath: str, config: Dict[str, Any]) -> None:
-    """Persists current configuration dictionary to JSON file."""
-    with open(filepath, 'w') as f:
-        json.dump(config, f, indent=4)
+class ConfigLoader:
+    """Simple helper for managing application settings."""
+    def __init__(self, filepath: str, defaults: Dict[str, Any]):
+        self.filepath = filepath
+        self.defaults = defaults
+        self.settings = self.refresh()
 
-# Example usage implementation
-if __name__ == "__main__":
-    default_settings = {
-        "host": "localhost",
-        "port": 8080,
-        "debug": False
-    }
-    current_cfg = load_config("config.json", default_settings)
-    print(f"Loaded config: {current_cfg}")
+    def refresh(self) -> Dict[str, Any]:
+        """Reload configuration from disk."""
+        self.settings = load_config(self.filepath, self.defaults)
+        return self.settings
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Retrieve a specific setting value."""
+        return self.settings.get(key, default)
