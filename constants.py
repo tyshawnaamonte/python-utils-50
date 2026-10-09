@@ -1,26 +1,56 @@
-import os
-from typing import Final
+"""Application constants and environment configuration utilities."""
 
-# Application path configurations
-BASE_DIR: Final[str] = os.path.dirname(os.path.abspath(__file__))
-LOG_DIR: Final[str] = os.path.join(BASE_DIR, 'logs')
+from enum import Enum
+from typing import Dict, NamedTuple
 
-# Processing constraints
-DEFAULT_TIMEOUT: Final[int] = 30
-MAX_RETRIES: Final[int] = 3
-CHUNK_SIZE: Final[int] = 4096
 
-# Formatting defaults
-DATE_FORMAT: Final[str] = '%Y-%m-%d %H:%M:%S'
-ENCODING: Final[str] = 'utf-8'
+class Environment(Enum):
+    """Supported application execution environments."""
 
-# Status codes for internal handlers
-STATUS_SUCCESS: Final[int] = 200
-STATUS_ERROR: Final[int] = 500
+    DEVELOPMENT = "development"
+    STAGING = "staging"
+    PRODUCTION = "production"
+    TESTING = "testing"
 
-def get_environment_config() -> dict:
-    """Retrieve base configuration settings from environment."""
+
+class TimeUnits(NamedTuple):
+    """Time conversion factors represented in seconds."""
+
+    MINUTE: int = 60
+    HOUR: int = 3600
+    DAY: int = 86400
+    WEEK: int = 604800
+
+
+# System default operational parameters
+DEFAULT_TIMEOUT: int = 30
+DEFAULT_RETRIES: int = 3
+DEFAULT_BUFFER_SIZE: int = 8192
+
+
+def get_default_headers(user_agent: str = "python-utils/1.0") -> Dict[str, str]:
+    """Generate default HTTP headers for outgoing requests.
+
+    Args:
+        user_agent: Custom User-Agent header string.
+
+    Returns:
+        Dict[str, str]: Standardized HTTP header mapping.
+    """
     return {
-        "timeout": int(os.getenv("APP_TIMEOUT", DEFAULT_TIMEOUT)),
-        "debug": os.getenv("APP_DEBUG", "False") == "True"
+        "User-Agent": user_agent,
+        "Accept": "application/json",
+        "Content-Type": "application/json",
     }
+
+
+def is_valid_environment(env_name: str) -> bool:
+    """Check if a string corresponds to a defined environment.
+
+    Args:
+        env_name: Environment identifier string to validate.
+
+    Returns:
+        bool: True if env_name is a valid environment value.
+    """
+    return env_name.lower() in {e.value for e in Environment}
