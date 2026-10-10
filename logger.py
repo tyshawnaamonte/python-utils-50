@@ -1,34 +1,30 @@
 import logging
-import sys
-from typing import Optional
+from logging.handlers import RotatingFileHandler
+import os
 
-def setup_logger(name: str, level: int = logging.INFO) -> logging.Logger:
-    """Configures a standard logger with console output."""
+def setup_logger(name='app_logger', log_file='app.log', level=logging.INFO):
+    """Configures a rotating file logger for general application use."""
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
+    # Prevent duplicate handlers if function is called multiple times
     if not logger.handlers:
-        handler = logging.StreamHandler(sys.stdout)
+        # Rotate at 5MB, keep 3 backups
+        handler = RotatingFileHandler(
+            log_file, 
+            maxBytes=5 * 1024 * 1024, 
+            backupCount=3
+        )
+        
         formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
         handler.setFormatter(formatter)
         logger.addHandler(handler)
+        
+        # Also output to console for development visibility
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
 
     return logger
-
-def log_execution_time(func):
-    """Decorator for basic execution timing logs."""
-    import time
-    import functools
-
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        start = time.perf_counter()
-        result = func(*args, **kwargs)
-        duration = time.perf_counter() - start
-        logging.getLogger(func.__module__).debug(
-            f"{func.__name__} executed in {duration:.4f}s"
-        )
-        return result
-    return wrapper
