@@ -1,35 +1,28 @@
-import time
-import logging
-from functools import wraps
-from typing import Callable, Any, Tuple, Type
+import os
+import json
+from typing import Any, Optional
 
-logger = logging.getLogger(__name__)
+def load_json(filepath: str) -> dict:
+    """Read and parse a JSON file safely."""
+    if not os.path.exists(filepath):
+        return {}
+    with open(filepath, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
-def retry(
-    exceptions: Tuple[Type[BaseException], ...] = (Exception,),
-    retries: int = 3,
-    delay: float = 1.0,
-    backoff: float = 2.0
-) -> Callable:
-    """
-    Decorator that retries a function call on specified exceptions with exponential backoff.
-    """
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-        @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            curr_delay = delay
-            for attempt in range(1, retries + 2):
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as e:
-                    if attempt > retries:
-                        logger.error(f"Function {func.__name__} failed after {retries} retries.")
-                        raise e
-                    logger.warning(
-                        f"Exception '{e}' caught. Retrying {func.__name__} "
-                        f"in {curr_delay:.2f} seconds (Attempt {attempt}/{retries})..."
-                    )
-                    time.sleep(curr_delay)
-                    curr_delay *= backoff
-        return wrapper
-    return decorator
+def save_json(filepath: str, data: dict) -> None:
+    """Write dictionary data to a JSON file."""
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=4)
+
+def get_env(key: str, default: Optional[str] = None) -> Any:
+    """Retrieve environment variable with default fallback."""
+    return os.environ.get(key, default)
+
+def chunk_list(data: list, size: int):
+    """Split a list into smaller chunks."""
+    for i in range(0, len(data), size):
+        yield data[i:i + size]
+
+def sanitize_path(path: str) -> str:
+    """Normalize path and ensure absolute format."""
+    return os.path.abspath(os.path.expanduser(path))
