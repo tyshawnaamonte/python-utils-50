@@ -1,28 +1,36 @@
-import os
-import json
-from typing import Any, Optional
+from typing import Any, Iterable, Optional, TypeVar, List
 
-def load_json(filepath: str) -> dict:
-    """Read and parse a JSON file safely."""
-    if not os.path.exists(filepath):
-        return {}
-    with open(filepath, 'r', encoding='utf-8') as f:
-        return json.load(f)
+T = TypeVar('T')
 
-def save_json(filepath: str, data: dict) -> None:
-    """Write dictionary data to a JSON file."""
-    with open(filepath, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=4)
+def flatten(items: Iterable[Any]) -> List[Any]:
+    """Recursively flatten a nested list structure into a single list."""
+    result: List[Any] = []
+    for item in items:
+        if isinstance(item, (list, tuple)):
+            result.extend(flatten(item))
+        else:
+            result.append(item)
+    return result
 
-def get_env(key: str, default: Optional[str] = None) -> Any:
-    """Retrieve environment variable with default fallback."""
-    return os.environ.get(key, default)
-
-def chunk_list(data: list, size: int):
-    """Split a list into smaller chunks."""
+def chunk_list(data: List[T], size: int) -> Iterable[List[T]]:
+    """Split a list into smaller chunks of a specified size."""
+    if size <= 0:
+        raise ValueError("Chunk size must be a positive integer")
     for i in range(0, len(data), size):
         yield data[i:i + size]
 
-def sanitize_path(path: str) -> str:
-    """Normalize path and ensure absolute format."""
-    return os.path.abspath(os.path.expanduser(path))
+def get_nested(data: dict, keys: List[str], default: Any = None) -> Any:
+    """Retrieve a value from a nested dictionary using a path of keys."""
+    current = data
+    for key in keys:
+        if isinstance(current, dict) and key in current:
+            current = current[key]
+        else:
+            return default
+    return current
+
+def ensure_list(value: Any) -> List[Any]:
+    """Wrap a single value into a list or return the original list."""
+    if value is None:
+        return []
+    return value if isinstance(value, (list, tuple)) else [value]
