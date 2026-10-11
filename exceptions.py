@@ -1,35 +1,26 @@
-import logging
-from typing import Any, Optional
+class UtilsError(Exception):
+    """Base exception for python-utils-50."""
+    pass
 
-# Logger setup for application errors
-logger = logging.getLogger(__name__)
+class ValidationError(UtilsError):
+    """Raised when input data fails validation."""
+    pass
 
-class BaseAppError(Exception):
-    """Custom base exception for project-wide error tracking."""
-    def __init__(self, message: str, code: Optional[int] = None):
-        super().__init__(message)
-        self.code = code
+class ConfigurationError(UtilsError):
+    """Raised when configuration settings are invalid."""
+    pass
 
-class ConfigurationError(BaseAppError):
-    """Raised when project configuration is missing or invalid."""
-
-class DataProcessingError(BaseAppError):
-    """Raised during unexpected failures in core data operations."""
-
-def handle_execution(func):
-    """Decorator to catch edge case errors during function execution."""
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        try:
-            return func(*args, **kwargs)
-        except (ValueError, TypeError) as e:
-            logger.error(f"Invalid input data in {func.__name__}: {e}")
-            raise DataProcessingError(f"Input validation failed: {str(e)}")
-        except Exception as e:
-            logger.critical(f"Unhandled exception in {func.__name__}: {e}")
-            raise
-    return wrapper
-
-def validate_not_none(value: Any, name: str) -> None:
-    """Utility for checking null edge cases."""
+def raise_if_none(value, message="Value cannot be None"):
+    """Check if value is None and raise exception."""
     if value is None:
-        raise ValueError(f"Parameter '{name}' cannot be None")
+        raise ValidationError(message)
+    return value
+
+def safe_execute(func, *args, **kwargs):
+    """Execute function and catch custom exceptions."""
+    try:
+        return func(*args, **kwargs)
+    except UtilsError as e:
+        # Log or re-raise based on application needs
+        print(f"Operation failed: {e}")
+        raise
