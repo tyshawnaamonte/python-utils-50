@@ -1,40 +1,48 @@
 # python-utils-50
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-`python-utils-50` is a curated collection of fifty micro-utilities designed to eliminate boilerplate code in everyday Python projects. From robust nested dictionary merging to safe directory creation, this library provides highly optimized, zero-dependency helpers that streamline your development workflow.
+A curated collection of high-performance Python utility functions designed to streamline repetitive coding tasks. This library focuses on simplifying data manipulation, string formatting, and file system operations with minimal dependencies.
 
 ## Features
 
-* **Type-Safe Deep Merging**: Recursively combine nested dictionaries without side effects or mutating the original structures.
-* **Resilient File I/O**: Safe wrapper functions that automatically handle and generate missing nested directories during file write operations.
-* **Smart Datetime Parsing**: Out-of-the-box parsing for fifty common string-based timestamp formats directly into standard Python datetime objects.
+*   **Data Transformation:** Robust decorators for type-casting and schema validation across complex nested dictionaries.
+*   **File System Helpers:** Simplified context managers for recursive directory scanning and bulk file renaming.
+*   **Performance Tools:** Integrated function memoization and execution time logging to optimize bottlenecks.
+*   **String Sanitization:** Native support for slugifying, cleaning, and normalizing text inputs for web-safe operations.
 
 ## Installation
 
-Install the package directly from PyPI:
+Install the package via `pip` from PyPI:
 
 ```bash
 pip install python-utils-50
 ```
 
-## Usage
+For development installations:
 
-Here is a quick example of how to merge configurations and write the output safely:
+```bash
+git clone https://github.com/Developer/python-utils-50.git
+cd python-utils-50
+pip install -e .
+```
+
+## Basic Usage
+
+Import the desired module and utilize the optimized utility methods directly:
 
 ```python
-from python_utils_50.dicts import deep_merge
-from python_utils_50.files import safe_write
+from pyutils50 import strings, filesystem
 
-# Combine nested configuration dictionaries
-default_config = {"server": {"host": "127.0.0.1", "port": 80}}
-user_config = {"server": {"port": 8080}}
-final_config = deep_merge(default_config, user_config)
+# Slugify a string for URL usage
+clean_text = strings.slugify("Hello World! This is a test.")
+print(clean_text)  # output: hello-world-this-is-a-test
 
-# Output the result, automatically creating any missing parent directories
-safe_write("config/prod/settings.json", str(final_config))
+# List all files in a directory with specific extensions
+py_files = filesystem.list_files_by_extension("./src", ".py")
+print(py_files)
 ```
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Distributed under the MIT License. See `LICENSE` for more information.
