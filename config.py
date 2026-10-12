@@ -1,30 +1,46 @@
+import json
 import os
-from typing import Any, Dict
+from pathlib import Path
+from typing import Any, Dict, Optional, Union
 
-class Config:
-    """Centralized configuration management for project utilities."""
-    
-    def __init__(self, env_prefix: str = "UTILS_"):
-        self.env_prefix = env_prefix
-        self._settings: Dict[str, Any] = {}
-        self._load_from_env()
 
-    def _load_from_env(self) -> None:
-        """Loads environment variables with the specified prefix."""
-        for key, value in os.environ.items():
-            if key.startswith(self.env_prefix):
-                clean_key = key[len(self.env_prefix):].lower()
-                self._settings[clean_key] = value
+class ConfigManager:
+    """Manages application configuration loading and key-value access."""
+
+    def __init__(self, config_path: Optional[Union[str, Path]] = None) -> None:
+        """Initialize ConfigManager with an optional file path."""
+        self.config_path: Optional[Path] = Path(config_path) if config_path else None
+        self._data: Dict[str, Any] = {}
+        if self.config_path and self.config_path.exists():
+            self.load()
+
+    def load(self) -> None:
+        """Load configuration settings from a JSON file."""
+        if not self.config_path:
+            raise ValueError("No configuration path specified.")
+
+        with open(self.config_path, "r", encoding="utf-8") as file:
+            self._data = json.load(file)
 
     def get(self, key: str, default: Any = None) -> Any:
-        """Retrieve configuration value by key."""
-        return self._settings.get(key.lower(), default)
+        """Retrieve a configuration value by key or environment fallback."""
+        if key in self._data:
+            return self._data[key]
+        return os.environ.get(key.upper(), default)
 
-    def update(self, new_settings: Dict[str, Any]) -> None:
-        """Update settings with a provided dictionary."""
-        for key, value in new_settings.items():
-            self._settings[key.lower()] = value
+    def set(self, key: str, value: Any) -> None:
+        """Set a configuration key-value pair in memory."""
+        self._data[key] = value
 
-def get_default_config() -> Config:
-    """Factory function for standard utility configuration."""
-    return Config()
+    def save(self, target_path: Optional[Union[str, Path]] = None) -> None:
+        """Save current memory configuration to a JSON file."""
+        path = Path(target_path) if target_path else self.config_path
+        if not path:
+            raise ValueError("Destination path not provided for saving configuration.")
+
+        with open(path, "w", encoding="utf-8") as file:
+            json.dump(self._data, file, indent=4)
+
+    def as_dict(self) -> Dict[str, Any]:
+        """Return a copy of the configuration dictionary."""
+        return self._data.copy()
