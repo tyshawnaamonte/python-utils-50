@@ -1,35 +1,25 @@
-import functools
 import time
-from typing import Callable, Any, Dict
+import functools
+import logging
+from typing import Callable, Any
 
-_CACHE: Dict[tuple, Any] = {}
+logger = logging.getLogger(__name__)
 
-def memoize(func: Callable) -> Callable:
-    """Decorator for caching function results based on arguments."""
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs) -> Any:
-        key = (func.__name__, args, frozenset(kwargs.items()))
-        if key not in _CACHE:
-            _CACHE[key] = func(*args, **kwargs)
-        return _CACHE[key]
-    return wrapper
-
-def batch_process(items: list, chunk_size: int = 100):
-    """Generator to yield chunks for memory-efficient processing."""
-    for i in range(0, len(items), chunk_size):
-        yield items[i:i + chunk_size]
-
-def timing_decorator(func: Callable) -> Callable:
-    """Utility for measuring function execution latency."""
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        start = time.perf_counter()
-        result = func(*args, **kwargs)
-        duration = time.perf_counter() - start
-        print(f"DEBUG: {func.__name__} took {duration:.4f}s")
-        return result
-    return wrapper
-
-def clear_cache() -> None:
-    """Manual memory reclamation for the internal cache."""
-    _CACHE.clear()
+def retry(max_attempts: int = 3, delay: float = 1.0, exceptions: tuple = (Exception,)): 
+    """Decorator for retrying network operations on failure."""
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            attempts = 0
+            while attempts < max_attempts:
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    attempts += 1
+                    if attempts >= max_attempts:
+                        logger.error(f"Final attempt {attempts} failed: {e}")
+                        raise
+                    logger.warning(f"Attempt {attempts} failed, retrying in {delay}s...")
+                    time.sleep(delay)
+        return wrapper
+    return decorator
