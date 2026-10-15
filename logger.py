@@ -1,33 +1,42 @@
 import logging
-import os
-from logging.handlers import RotatingFileHandler
+import sys
+from typing import Optional
 
-def setup_logger(name: str, log_file: str = 'app.log', level: int = logging.INFO) -> logging.Logger:
-    """Configures a rotating file logger for the application."""
+def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
+    """
+    Creates and configures a standard logger instance.
+
+    Args:
+        name: The name of the logger.
+        level: The logging threshold (default INFO).
+
+    Returns:
+        A configured logging.Logger object.
+    """
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    # Prevent duplicate handlers if function is called multiple times
     if not logger.handlers:
-        # Ensure log directory exists
-        log_dir = os.path.dirname(log_file)
-        if log_dir and not os.path.exists(log_dir):
-            os.makedirs(log_dir)
-
-        # Rotation setup: 5MB file, keep 3 backups
-        handler = RotatingFileHandler(
-            log_file, maxBytes=5 * 1024 * 1024, backupCount=3
-        )
-        
+        handler = logging.StreamHandler(sys.stdout)
         formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         )
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
     return logger
 
-if __name__ == '__main__':
-    # Usage example
-    app_logger = setup_logger('my_app', 'logs/app.log')
-    app_logger.info('Logger initialized successfully')
+class LoggerMixin:
+    """
+    Mixin class to provide logging capabilities to any class.
+    """
+    def __init__(self) -> None:
+        self.logger: logging.Logger = get_logger(self.__class__.__name__)
+
+    def log_info(self, message: str) -> None:
+        """Log an info level message."""
+        self.logger.info(message)
+
+    def log_error(self, message: str, exc_info: bool = True) -> None:
+        """Log an error level message with traceback."""
+        self.logger.error(message, exc_info=exc_info)
