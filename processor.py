@@ -1,38 +1,28 @@
 import logging
 
-# Configure logger for module tracking
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def validate_input(data: dict) -> bool:
-    """Ensures required fields exist and types are correct."""
-    required = {"id": int, "payload": str}
-    for field, expected_type in required.items():
-        if field not in data or not isinstance(data[field], expected_type):
-            return False
+def validate_input(data):
+    """Ensure data is a non-empty dictionary."""
+    if not isinstance(data, dict):
+        raise ValueError(f"Expected dict, got {type(data).__name__}")
+    if not data:
+        raise ValueError("Input dictionary cannot be empty")
     return True
 
-def run_processing_loop(data_stream: list):
-    """Main loop processing valid items from stream."""
-    for entry in data_stream:
-        # Validate structure before processing
-        if not validate_input(entry):
-            logger.error(f"Invalid data structure encountered: {entry}")
-            continue
-
+def process_payloads(payload_list):
+    """Main processing loop with input validation."""
+    for index, payload in enumerate(payload_list):
         try:
-            # Process valid business logic
-            process_item(entry)
+            validate_input(payload)
+            # Perform business logic here
+            logger.info(f"Processing payload at index {index}: {payload.get('id', 'unknown')}")
+        except ValueError as e:
+            logger.error(f"Skipping invalid payload at index {index}: {e}")
         except Exception as e:
-            logger.exception(f"Runtime error during processing: {e}")
-
-def process_item(item: dict):
-    """Placeholder for core business logic."""
-    print(f"Processing item {item['id']}: {item['payload']}")
+            logger.critical(f"Unexpected failure at index {index}: {e}")
 
 if __name__ == "__main__":
-    sample_data = [
-        {"id": 1, "payload": "data_one"},
-        {"id": "invalid", "payload": "fail"},
-        {"id": 2, "payload": "data_two"}
-    ]
-    run_processing_loop(sample_data)
+    sample_data = [{'id': 1}, {}, 'invalid_string', {'id': 2}]
+    process_payloads(sample_data)
