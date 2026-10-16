@@ -1,38 +1,32 @@
 import time
 import functools
 import logging
+from typing import Callable, Any, Type, Tuple
 
 logger = logging.getLogger(__name__)
 
-def retry(exceptions, tries=3, delay=1, backoff=2):
-    """
-    Decorator for retrying network operations with exponential backoff.
-    
-    :param exceptions: tuple of exceptions to catch
-    :param tries: max number of attempts
-    :param delay: initial delay between retries
-    :param backoff: multiplier for delay
-    """
-    def decorator(func):
+def retry_on_failure(exceptions: Tuple[Type[Exception], ...], retries: int = 3, delay: float = 1.0):
+    """Decorator for retrying network operations on specific errors."""
+    def decorator(func: Callable):
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            attempt, current_delay = 1, delay
-            while attempt <= tries:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            last_exception = None
+            for attempt in range(retries):
                 try:
                     return func(*args, **kwargs)
                 except exceptions as e:
-                    if attempt == tries:
-                        logger.error(f'Operation failed after {tries} attempts')
-                        raise
-                    
-                    logger.warning(f'Attempt {attempt} failed: {e}. Retrying in {current_delay}s...')
-                    time.sleep(current_delay)
-                    attempt += 1
-                    current_delay *= backoff
+                    last_exception = e
+                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {delay}s...")
+                    time.sleep(delay)
+            
+            logger.error(f"Operation failed after {retries} attempts.")
+            raise last_exception
         return wrapper
     return decorator
 
-# Example usage for network calls:
-# @retry((ConnectionError, TimeoutError), tries=3)
-# def fetch_data(url):
-#     pass
+@retry_on_failure((ConnectionError, TimeoutError), retries=3, delay=2.0)
+def fetch_data(url: str):
+    """Example network call handler."""
+    # Implementation would typically use requests or httpx
+    logger.info(f"Fetching data from {url}")
+    return {"status": "success"}
