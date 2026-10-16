@@ -1,42 +1,35 @@
 import logging
-import sys
-from typing import Optional
+from logging.handlers import RotatingFileHandler
+import os
 
-def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
-    """
-    Creates and configures a standard logger instance.
-
-    Args:
-        name: The name of the logger.
-        level: The logging threshold (default INFO).
-
-    Returns:
-        A configured logging.Logger object.
-    """
+def setup_logger(name: str, log_file: str = 'app.log', level: int = logging.INFO):
+    """Configures a rotating file logger for the application."""
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    if not logger.handlers:
-        handler = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+    # Ensure directory exists
+    log_dir = os.path.dirname(log_file)
+    if log_dir and not os.path.exists(log_dir):
+        os.makedirs(log_dir)
 
+    # Setup rotation: 5MB per file, keep 3 backups
+    handler = RotatingFileHandler(
+        log_file, 
+        maxBytes=5*1024*1024, 
+        backupCount=3
+    )
+    
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    handler.setFormatter(formatter)
+    
+    if not logger.handlers:
+        logger.addHandler(handler)
+        
     return logger
 
-class LoggerMixin:
-    """
-    Mixin class to provide logging capabilities to any class.
-    """
-    def __init__(self) -> None:
-        self.logger: logging.Logger = get_logger(self.__class__.__name__)
-
-    def log_info(self, message: str) -> None:
-        """Log an info level message."""
-        self.logger.info(message)
-
-    def log_error(self, message: str, exc_info: bool = True) -> None:
-        """Log an error level message with traceback."""
-        self.logger.error(message, exc_info=exc_info)
+# Usage example
+if __name__ == '__main__':
+    app_logger = setup_logger('utils', 'logs/app.log')
+    app_logger.info('Logger initialized successfully')
