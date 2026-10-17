@@ -1,38 +1,36 @@
-import re
+import logging
+from typing import Any, Dict, List, Union
 
-def validate_input_data(data: dict) -> bool:
-    """Validates dictionary structure and contents for processing."""
-    required_keys = ['id', 'payload', 'timestamp']
-    
+logger = logging.getLogger(__name__)
+
+def validate_input_schema(data: Any, required_fields: List[str]) -> bool:
+    """Ensures input dictionary contains mandatory keys."""
     if not isinstance(data, dict):
+        logger.error("Invalid input type: expected dict")
         return False
 
-    # Check required fields
-    if not all(key in data for key in required_keys):
+    missing = [field for field in required_fields if field not in data]
+    if missing:
+        logger.error(f"Missing required fields: {', '.join(missing)}")
         return False
-
-    # Validate ID format (alphanumeric)
-    if not re.match(r'^[a-zA-Z0-9]+$', str(data['id'])):
-        return False
-
-    # Validate payload type
-    if not isinstance(data['payload'], (str, dict, list)):
-        return False
-
     return True
 
-def sanitize_input(value: str) -> str:
-    """Basic sanitization for string inputs."""
-    if not isinstance(value, str):
-        return str(value)
-    return value.strip()[:256]
+def sanitize_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Removes null entries and strips whitespace from strings."""
+    sanitized = {}
+    for key, value in payload.items():
+        if value is None:
+            continue
+        if isinstance(value, str):
+            sanitized[key] = value.strip()
+        else:
+            sanitized[key] = value
+    return sanitized
 
-# Main processing loop utility
-def process_stream(data_stream: list):
-    """Filter and process validated input items."""
+def process_data_batch(batch: List[Dict[str, Any]], required: List[str]) -> List[Dict[str, Any]]:
+    """Main loop validation logic for data processing."""
     valid_items = []
-    for entry in data_stream:
-        if validate_input_data(entry):
-            entry['payload'] = sanitize_input(entry['payload'])
-            valid_items.append(entry)
+    for item in batch:
+        if validate_input_schema(item, required):
+            valid_items.append(sanitize_payload(item))
     return valid_items
