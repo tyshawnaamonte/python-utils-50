@@ -1,36 +1,32 @@
-from typing import Any, Iterable, Optional, TypeVar, List
+import json
+from typing import Any, Dict, List, Optional
+import os
 
-T = TypeVar('T')
+def load_json(filepath: str) -> Dict[str, Any]:
+    """Load and parse a JSON file from disk."""
+    if not os.path.exists(filepath):
+        return {}
+    with open(filepath, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
-def flatten(items: Iterable[Any]) -> List[Any]:
-    """Recursively flatten a nested list structure into a single list."""
-    result: List[Any] = []
-    for item in items:
-        if isinstance(item, (list, tuple)):
-            result.extend(flatten(item))
-        else:
-            result.append(item)
-    return result
+def save_json(data: Any, filepath: str) -> None:
+    """Serialize data to a JSON file."""
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=4)
 
-def chunk_list(data: List[T], size: int) -> Iterable[List[T]]:
-    """Split a list into smaller chunks of a specified size."""
-    if size <= 0:
-        raise ValueError("Chunk size must be a positive integer")
-    for i in range(0, len(data), size):
-        yield data[i:i + size]
+def chunk_list(data: List[Any], size: int) -> List[List[Any]]:
+    """Split a list into smaller chunks of fixed size."""
+    return [data[i:i + size] for i in range(0, len(data), size)]
 
-def get_nested(data: dict, keys: List[str], default: Any = None) -> Any:
-    """Retrieve a value from a nested dictionary using a path of keys."""
-    current = data
-    for key in keys:
-        if isinstance(current, dict) and key in current:
-            current = current[key]
-        else:
-            return default
-    return current
+def flatten_list(nested: List[List[Any]]) -> List[Any]:
+    """Flatten a list of lists into a single list."""
+    return [item for sublist in nested for item in sublist]
 
-def ensure_list(value: Any) -> List[Any]:
-    """Wrap a single value into a list or return the original list."""
-    if value is None:
-        return []
-    return value if isinstance(value, (list, tuple)) else [value]
+def get_env_variable(key: str, default: Optional[str] = None) -> str:
+    """Retrieve environment variable with optional default fallback."""
+    return os.environ.get(key, default or "")
+
+def ensure_dir(directory: str) -> None:
+    """Create directory path if it does not exist."""
+    if not os.path.exists(directory):
+        os.makedirs(directory)
