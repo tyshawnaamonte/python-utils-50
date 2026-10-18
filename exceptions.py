@@ -1,26 +1,29 @@
-class UtilsError(Exception):
-    """Base exception for python-utils-50."""
+class BaseUtilsError(Exception):
+    """Base exception for python-utils-50 library."""
     pass
 
-class ValidationError(UtilsError):
-    """Raised when input data fails validation."""
+class ConfigurationError(BaseUtilsError):
+    """Raised when configuration values are invalid."""
     pass
 
-class ConfigurationError(UtilsError):
-    """Raised when configuration settings are invalid."""
+class ValidationError(BaseUtilsError):
+    """Raised when data validation fails."""
     pass
 
-def raise_if_none(value, message="Value cannot be None"):
-    """Check if value is None and raise exception."""
-    if value is None:
-        raise ValidationError(message)
-    return value
+class ProcessingError(BaseUtilsError):
+    """Raised during core utility processing failures."""
+    pass
 
-def safe_execute(func, *args, **kwargs):
-    """Execute function and catch custom exceptions."""
-    try:
-        return func(*args, **kwargs)
-    except UtilsError as e:
-        # Log or re-raise based on application needs
-        print(f"Operation failed: {e}")
-        raise
+def handle_exception(exc: Exception) -> None:
+    """Standardized exception logging and re-raising."""
+    if isinstance(exc, BaseUtilsError):
+        # In a real scenario, integrate with project logger
+        print(f"[ERROR] {type(exc).__name__}: {exc}")
+    else:
+        print(f"[CRITICAL] Unexpected error: {exc}")
+    raise exc
+
+def validate_input(value: any, expected_type: type) -> None:
+    """Checks input types and raises structured exceptions."""
+    if not isinstance(value, expected_type):
+        raise ValidationError(f"Expected {expected_type.__name__}, got {type(value).__name__}")
