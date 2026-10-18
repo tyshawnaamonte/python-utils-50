@@ -1,32 +1,42 @@
-import json
-from typing import Any, Dict, List, Optional
-import os
+import functools
+import random
+import time
+from typing import Any, Callable, Tuple, Type
 
-def load_json(filepath: str) -> Dict[str, Any]:
-    """Load and parse a JSON file from disk."""
-    if not os.path.exists(filepath):
-        return {}
-    with open(filepath, 'r', encoding='utf-8') as f:
-        return json.load(f)
 
-def save_json(data: Any, filepath: str) -> None:
-    """Serialize data to a JSON file."""
-    with open(filepath, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=4)
+def retry_network_op(
+    max_retries: int = 3,
+    initial_delay: float = 1.0,
+    backoff_factor: float = 2.0,
+    jitter: bool = True,
+    retryable_exceptions: Tuple[Type[BaseException], ...] = (Exception,),
+) -> Callable:
+    """
+    Decorator to retry network operations with exponential backoff and jitter.
 
-def chunk_list(data: List[Any], size: int) -> List[List[Any]]:
-    """Split a list into smaller chunks of fixed size."""
-    return [data[i:i + size] for i in range(0, len(data), size)]
+    :param max_retries: Maximum number of attempts before raising exception.
+    :param initial_delay: Base delay in seconds before the first retry.
+    :param backoff_factor: Multiplier for exponential backoff delay.
+    :param jitter: Add random variance to delay to avoid synchronized retries.
+    :param retryable_exceptions: Tuple of exceptions that trigger a retry.
+    """
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            delay = initial_delay
+            for attempt in range(1, max_retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except retryable_exceptions as exc:
+                    if attempt == max_retries:
+                        raise exc
+                    
+                    sleep_duration = delay
+                    if jitter:
+                        sleep_duration += random.uniform(0, 0.1 * delay)
+                    
+                    time.sleep(sleep_duration)
+                    delay *= backoff_factor
 
-def flatten_list(nested: List[List[Any]]) -> List[Any]:
-    """Flatten a list of lists into a single list."""
-    return [item for sublist in nested for item in sublist]
-
-def get_env_variable(key: str, default: Optional[str] = None) -> str:
-    """Retrieve environment variable with optional default fallback."""
-    return os.environ.get(key, default or "")
-
-def ensure_dir(directory: str) -> None:
-    """Create directory path if it does not exist."""
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+        return wrapper
+    return decorator
