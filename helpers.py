@@ -1,25 +1,48 @@
-import time
-import functools
-import logging
-from typing import Callable, Any
+"""Helper functions for common Python operations and data structures."""
 
-logger = logging.getLogger(__name__)
+from typing import Any, Dict, Generator, Iterable, List, Optional, Type, TypeVar
 
-def retry(max_attempts: int = 3, delay: float = 1.0, exceptions: tuple = (Exception,)): 
-    """Decorator for retrying network operations on failure."""
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            attempts = 0
-            while attempts < max_attempts:
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as e:
-                    attempts += 1
-                    if attempts >= max_attempts:
-                        logger.error(f"Final attempt {attempts} failed: {e}")
-                        raise
-                    logger.warning(f"Attempt {attempts} failed, retrying in {delay}s...")
-                    time.sleep(delay)
-        return wrapper
-    return decorator
+T = TypeVar("T")
+
+
+def chunk_iterable(iterable: Iterable[T], size: int) -> Generator[List[T], None, None]:
+    """Split an iterable into chunks of specified size."""
+    if size <= 0:
+        raise ValueError("Chunk size must be greater than 0")
+    
+    chunk: List[T] = []
+    for item in iterable:
+        chunk.append(item)
+        if len(chunk) == size:
+            yield chunk
+            chunk = []
+    if chunk:
+        yield chunk
+
+
+def deep_merge(dict1: Dict[str, Any], dict2: Dict[str, Any]) -> Dict[str, Any]:
+    """Recursively merge two dictionaries into a new dictionary."""
+    result = dict1.copy()
+    for key, value in dict2.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+def safe_cast(value: Any, to_type: Type[T], default: Optional[T] = None) -> Optional[T]:
+    """Attempt to cast a value to a target type, returning default on failure."""
+    try:
+        return to_type(value)
+    except (ValueError, TypeError):
+        return default
+
+
+def truncate_text(text: str, max_length: int, suffix: str = "...") -> str:
+    """Truncate text to max_length, preserving suffix if truncated."""
+    if len(text) <= max_length:
+        return text
+    if max_length < len(suffix):
+        return suffix[:max_length]
+    return text[: max_length - len(suffix)] + suffix
