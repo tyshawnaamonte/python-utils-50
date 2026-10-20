@@ -1,29 +1,50 @@
-class BaseUtilsError(Exception):
-    """Base exception for python-utils-50 library."""
-    pass
+"""Custom exception hierarchy and standard error wrappers."""
 
-class ConfigurationError(BaseUtilsError):
-    """Raised when configuration values are invalid."""
-    pass
+from typing import Any, Callable, Optional, Type
 
-class ValidationError(BaseUtilsError):
-    """Raised when data validation fails."""
-    pass
 
-class ProcessingError(BaseUtilsError):
-    """Raised during core utility processing failures."""
-    pass
+class BaseUtilError(Exception):
+    """Base exception for utilities with structured error details."""
 
-def handle_exception(exc: Exception) -> None:
-    """Standardized exception logging and re-raising."""
-    if isinstance(exc, BaseUtilsError):
-        # In a real scenario, integrate with project logger
-        print(f"[ERROR] {type(exc).__name__}: {exc}")
-    else:
-        print(f"[CRITICAL] Unexpected error: {exc}")
-    raise exc
+    def __init__(self, message: str, details: Optional[dict[str, Any]] = None) -> None:
+        super().__init__(message)
+        self.message = message
+        self.details = details or {}
 
-def validate_input(value: any, expected_type: type) -> None:
-    """Checks input types and raises structured exceptions."""
-    if not isinstance(value, expected_type):
-        raise ValidationError(f"Expected {expected_type.__name__}, got {type(value).__name__}")
+    def __str__(self) -> str:
+        if self.details:
+            return f"{self.message} (details: {self.details})"
+        return self.message
+
+
+class ValidationError(BaseUtilError):
+    """Raised when argument validation or type checking fails."""
+
+
+class ConfigurationError(BaseUtilError):
+    """Raised when an expected configuration key or value is invalid."""
+
+
+class ProcessingError(BaseUtilError):
+    """Raised when an operation fails during standard processing flow."""
+
+
+def wrap_edge_case(
+    func: Callable[..., Any],
+    fallback_value: Any = None,
+    catch: tuple[Type[BaseException], ...] = (ValueError, TypeError, KeyError),
+) -> Callable[..., Any]:
+    """Wraps a function to convert standard edge case errors into predictable behavior."""
+
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return func(*args, **kwargs)
+        except catch as err:
+            if fallback_value is not None:
+                return fallback_value
+            raise ProcessingError(
+                f"Edge case encountered in {func.__name__}: {err}",
+                details={"args": args, "kwargs": kwargs},
+            ) from err
+
+    return wrapper
