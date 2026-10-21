@@ -1,48 +1,30 @@
-"""Helper functions for common Python operations and data structures."""
+import json
+import os
+from typing import Any, Dict
 
-from typing import Any, Dict, Generator, Iterable, List, Optional, Type, TypeVar
+def load_config(path: str, defaults: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Loads configuration from a JSON file, merging with provided defaults.
+    Returns the merged dictionary.
+    """
+    config = defaults.copy()
 
-T = TypeVar("T")
+    if not os.path.exists(path):
+        return config
 
-
-def chunk_iterable(iterable: Iterable[T], size: int) -> Generator[List[T], None, None]:
-    """Split an iterable into chunks of specified size."""
-    if size <= 0:
-        raise ValueError("Chunk size must be greater than 0")
-    
-    chunk: List[T] = []
-    for item in iterable:
-        chunk.append(item)
-        if len(chunk) == size:
-            yield chunk
-            chunk = []
-    if chunk:
-        yield chunk
-
-
-def deep_merge(dict1: Dict[str, Any], dict2: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively merge two dictionaries into a new dictionary."""
-    result = dict1.copy()
-    for key, value in dict2.items():
-        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-            result[key] = deep_merge(result[key], value)
-        else:
-            result[key] = value
-    return result
-
-
-def safe_cast(value: Any, to_type: Type[T], default: Optional[T] = None) -> Optional[T]:
-    """Attempt to cast a value to a target type, returning default on failure."""
     try:
-        return to_type(value)
-    except (ValueError, TypeError):
-        return default
+        with open(path, 'r') as f:
+            user_config = json.load(f)
+            if isinstance(user_config, dict):
+                config.update(user_config)
+    except (json.JSONDecodeError, IOError):
+        pass
 
+    return config
 
-def truncate_text(text: str, max_length: int, suffix: str = "...") -> str:
-    """Truncate text to max_length, preserving suffix if truncated."""
-    if len(text) <= max_length:
-        return text
-    if max_length < len(suffix):
-        return suffix[:max_length]
-    return text[: max_length - len(suffix)] + suffix
+def save_config(path: str, config: Dict[str, Any]) -> None:
+    """
+    Persists configuration dictionary to a JSON file.
+    """
+    with open(path, 'w') as f:
+        json.dump(config, f, indent=4)
