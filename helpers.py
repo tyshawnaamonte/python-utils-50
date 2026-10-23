@@ -3,10 +3,7 @@ import os
 from typing import Any, Dict
 
 def load_config(path: str, defaults: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Loads configuration from a JSON file, merging with provided defaults.
-    Returns the merged dictionary.
-    """
+    """Loads JSON configuration with provided default fallback values."""
     config = defaults.copy()
 
     if not os.path.exists(path):
@@ -22,9 +19,7 @@ def load_config(path: str, defaults: Dict[str, Any]) -> Dict[str, Any]:
 
     return config
 
-def save_config(path: str, config: Dict[str, Any]) -> None:
-    """
-    Persists configuration dictionary to a JSON file.
-    """
+def save_config(path: str, data: Dict[str, Any]) -> None:
+    """Persists configuration dictionary to a JSON file."""
     with open(path, 'w') as f:
-        json.dump(config, f, indent=4)
+        json.dump(data, f, indent=4)
