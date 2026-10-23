@@ -1,23 +1,23 @@
 # python-utils-50
 
-A curated collection of high-performance Python utility functions designed to streamline repetitive coding tasks. This library focuses on simplifying data manipulation, string formatting, and file system operations with minimal dependencies.
+A curated collection of production-ready Python utility functions designed to streamline repetitive coding tasks. This library focuses on performance, readability, and minimizing boilerplate code in daily scripting and enterprise projects.
 
 ## Features
 
-*   **Data Transformation:** Robust decorators for type-casting and schema validation across complex nested dictionaries.
-*   **File System Helpers:** Simplified context managers for recursive directory scanning and bulk file renaming.
-*   **Performance Tools:** Integrated function memoization and execution time logging to optimize bottlenecks.
-*   **String Sanitization:** Native support for slugifying, cleaning, and normalizing text inputs for web-safe operations.
+*   **Data Validation:** Robust decorators and schemas for rapid input sanitization and type checking.
+*   **File System Helpers:** Simplified context managers for recursive directory traversing and bulk file processing.
+*   **Performance Benchmarking:** Intuitive decorators to measure and log function execution time in production logs.
+*   **String Formatting:** Optimized utilities for handling complex regex-based replacements and text cleaning workflows.
 
 ## Installation
 
-Install the package via `pip` from PyPI:
+Install the package via pip:
 
 ```bash
 pip install python-utils-50
 ```
 
-For development installations:
+To install from source for local development:
 
 ```bash
 git clone https://github.com/Developer/python-utils-50.git
@@ -25,24 +25,27 @@ cd python-utils-50
 pip install -e .
 ```
 
-## Basic Usage
+## Usage
 
-Import the desired module and utilize the optimized utility methods directly:
+Import the required utilities to handle common boilerplate tasks with clean, readable code.
 
 ```python
-from pyutils50 import strings, filesystem
+from pyutils import time_it, slugify
 
-# Slugify a string for URL usage
-clean_text = strings.slugify("Hello World! This is a test.")
-print(clean_text)  # output: hello-world-this-is-a-test
+# Use the benchmarking decorator to monitor function performance
+@time_it
+def process_data(data):
+    return [d.upper() for d in data]
 
-# List all files in a directory with specific extensions
-py_files = filesystem.list_files_by_extension("./src", ".py")
-print(py_files)
+# Clean strings for URL-friendly naming conventions
+raw_text = "Hello World: Utilities Edition!"
+cleaned = slugify(raw_text)
+
+print(f"Slug: {cleaned}")
 ```
 
 ## License
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Distributed under the MIT License. See `LICENSE` for more information.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
