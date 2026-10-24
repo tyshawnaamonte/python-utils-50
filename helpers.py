@@ -1,25 +1,45 @@
-import json
 import os
-from typing import Any, Dict
+import json
+import time
+from typing import Any, Dict, Optional
 
-def load_config(path: str, defaults: Dict[str, Any]) -> Dict[str, Any]:
-    """Loads JSON configuration with provided default fallback values."""
-    config = defaults.copy()
-
-    if not os.path.exists(path):
-        return config
-
+def load_json(filepath: str) -> Optional[Dict[str, Any]]:
+    """Reads and parses a json file into a dictionary."""
+    if not os.path.exists(filepath):
+        return None
     try:
-        with open(path, 'r') as f:
-            user_config = json.load(f)
-            if isinstance(user_config, dict):
-                config.update(user_config)
+        with open(filepath, 'r') as f:
+            return json.load(f)
     except (json.JSONDecodeError, IOError):
-        pass
+        return None
 
-    return config
+def save_json(filepath: str, data: Dict[str, Any]) -> bool:
+    """Serializes data to a json file."""
+    try:
+        with open(filepath, 'w') as f:
+            json.dump(data, f, indent=4)
+        return True
+    except IOError:
+        return False
 
-def save_config(path: str, data: Dict[str, Any]) -> None:
-    """Persists configuration dictionary to a JSON file."""
-    with open(path, 'w') as f:
-        json.dump(data, f, indent=4)
+def retry_operation(func, retries: int = 3, delay: float = 1.0):
+    """Retries a function call upon failure."""
+    last_ex = None
+    for _ in range(retries):
+        try:
+            return func()
+        except Exception as e:
+            last_ex = e
+            time.sleep(delay)
+    raise last_ex
+
+def flatten_dict(d: Dict, parent_key: str = '', sep: str = '_') -> Dict:
+    """Flattens nested dictionary structures."""
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
