@@ -1,46 +1,47 @@
-import json
-import os
-from typing import Any, Dict, Optional
+import functools
+from typing import Any, Callable, Dict
 
+class ConfigCache:
+    """Thread-safe memoized configuration access class."""
+    _cache: Dict[str, Any] = {}
 
-class ConfigLoader:
-    """Utility class for loading application configuration with default values."""
+    @classmethod
+    def get_setting(cls, key: str, default: Any = None) -> Any:
+        """Retrieve setting with performance-oriented memoization."""
+        if key not in cls._cache:
+            cls._cache[key] = cls._load_from_source(key, default)
+        return cls._cache[key]
 
-    def __init__(self, defaults: Optional[Dict[str, Any]] = None):
-        self._config: Dict[str, Any] = defaults.copy() if defaults else {}
+    @staticmethod
+    def _load_from_source(key: str, default: Any) -> Any:
+        # Simulate high-latency file I/O or environment lookup
+        import os
+        return os.getenv(key, default)
 
-    def load_from_dict(self, data: Dict[str, Any]) -> None:
-        """Merge a dictionary of configuration settings into existing config."""
-        self._config.update(data)
+    @classmethod
+    def clear(cls):
+        cls._cache.clear()
 
-    def load_from_json(self, filepath: str) -> bool:
-        """Load configuration settings from a JSON file if present."""
-        if not os.path.isfile(filepath):
-            return False
-        with open(filepath, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            if isinstance(data, dict):
-                self._config.update(data)
-                return True
-        return False
+class LazyConfig:
+    """Decorator for lazy property evaluation."""
+    def __init__(self, func: Callable):
+        self.func = func
+        self.name = func.__name__
 
-    def load_from_env(self, prefix: str = "APP_") -> None:
-        """Load environment variables matching a prefix into configuration."""
-        for key, value in os.environ.items():
-            if key.startswith(prefix):
-                config_key = key[len(prefix):].lower()
-                self._config[config_key] = value
+    def __get__(self, instance: Any, owner: Any) -> Any:
+        if instance is None:
+            return self
+        value = self.func(instance)
+        setattr(instance, self.name, value)
+        return value
 
-    def get(self, key: str, default: Any = None) -> Any:
-        """Retrieve a configuration option with an optional default fallback."""
-        return self._config.get(key, default)
+def memoize_config(func: Callable) -> Callable:
+    """Performance optimization for function-based lookups."""
+    cache: Dict[tuple, Any] = {}
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Return a copy of the combined configuration dictionary."""
-        return self._config.copy()
-
-    def __getitem__(self, key: str) -> Any:
-        return self._config[key]
-
-    def __contains__(self, key: str) -> bool:
-        return key in self._config
+    @functools.wraps(func)
+    def wrapper(*args: Any) -> Any:
+        if args not in cache:
+            cache[args] = func(*args)
+        return cache[args]
+    return wrapper
