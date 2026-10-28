@@ -1,47 +1,35 @@
-import functools
-from typing import Any, Callable, Dict
+import json
+import os
+from typing import Any, Dict
 
-class ConfigCache:
-    """Thread-safe memoized configuration access class."""
-    _cache: Dict[str, Any] = {}
+def load_config(filepath: str, defaults: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Loads a JSON configuration file and merges it with defaults.
+    """
+    config = defaults.copy()
 
-    @classmethod
-    def get_setting(cls, key: str, default: Any = None) -> Any:
-        """Retrieve setting with performance-oriented memoization."""
-        if key not in cls._cache:
-            cls._cache[key] = cls._load_from_source(key, default)
-        return cls._cache[key]
+    if not os.path.exists(filepath):
+        return config
 
-    @staticmethod
-    def _load_from_source(key: str, default: Any) -> Any:
-        # Simulate high-latency file I/O or environment lookup
-        import os
-        return os.getenv(key, default)
+    try:
+        with open(filepath, 'r') as f:
+            user_config = json.load(f)
+            if isinstance(user_config, dict):
+                config.update(user_config)
+    except (json.JSONDecodeError, IOError):
+        pass
 
-    @classmethod
-    def clear(cls):
-        cls._cache.clear()
+    return config
 
-class LazyConfig:
-    """Decorator for lazy property evaluation."""
-    def __init__(self, func: Callable):
-        self.func = func
-        self.name = func.__name__
+def save_config(filepath: str, config: Dict[str, Any]) -> None:
+    """
+    Persists the provided configuration dictionary to disk.
+    """
+    with open(filepath, 'w') as f:
+        json.dump(config, f, indent=4)
 
-    def __get__(self, instance: Any, owner: Any) -> Any:
-        if instance is None:
-            return self
-        value = self.func(instance)
-        setattr(instance, self.name, value)
-        return value
-
-def memoize_config(func: Callable) -> Callable:
-    """Performance optimization for function-based lookups."""
-    cache: Dict[tuple, Any] = {}
-
-    @functools.wraps(func)
-    def wrapper(*args: Any) -> Any:
-        if args not in cache:
-            cache[args] = func(*args)
-        return cache[args]
-    return wrapper
+if __name__ == "__main__":
+    # Example usage for python-utils-50
+    default_settings = {"host": "localhost", "port": 8080, "debug": False}
+    current_cfg = load_config("settings.json", default_settings)
+    print(f"Loaded configuration: {current_cfg}")
