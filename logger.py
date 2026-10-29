@@ -1,31 +1,33 @@
 import logging
-import sys
-from typing import Optional
+from logging.handlers import RotatingFileHandler
+import os
 
-class Logger:
-    """Centralized application logging utility."""
-    def __init__(self, name: str, level: int = logging.INFO):
-        self.logger = logging.getLogger(name)
-        self.logger.setLevel(level)
-        self._configure_handlers()
+def setup_logger(name='app_logger', log_file='app.log', level=logging.INFO):
+    """Initializes a rotating file logger for general application use."""
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
 
-    def _configure_handlers(self) -> None:
+    # Prevent duplicate handlers if function is called multiple times
+    if not logger.handlers:
+        # 5MB file limit, keep 3 historical backups
+        handler = RotatingFileHandler(
+            log_file, 
+            maxBytes=5 * 1024 * 1024, 
+            backupCount=3
+        )
+        
         formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
-        stdout_handler = logging.StreamHandler(sys.stdout)
-        stdout_handler.setFormatter(formatter)
-        self.logger.addHandler(stdout_handler)
+        handler.setFormatter(formatter)
+        
+        logger.addHandler(handler)
+        
+    return logger
 
-    def info(self, msg: str) -> None:
-        self.logger.info(msg)
-
-    def error(self, msg: str, exc_info: bool = True) -> None:
-        self.logger.error(msg, exc_info=exc_info)
-
-    @classmethod
-    def get_logger(cls, name: str, level: int = logging.INFO) -> 'Logger':
-        return cls(name, level)
-
-def setup_default_logger(name: str = 'python-utils-50') -> Logger:
-    return Logger(name)
+# Example usage for verification
+if __name__ == '__main__':
+    logger = setup_logger()
+    logger.info('Logger initialized successfully')
+    logger.warning('Test warning message')
+    logger.error('Test error message')
