@@ -1,33 +1,42 @@
-class DataProcessingError(Exception):
-    """Base exception for data handling operations."""
+"""Custom exception hierarchy for general data handling utilities."""
+
+from typing import Any, Dict, Optional
+
+
+class DataUtilsError(Exception):
+    """Base exception for all errors raised by the data utils library."""
+
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__(message)
+        self.message = message
+        self.details = details or {}
+
+    def __str__(self) -> str:
+        if self.details:
+            detail_str = ", ".join(f"{k}={v!r}" for k, v in self.details.items())
+            return f"{self.message} ({detail_str})"
+        return self.message
+
+
+class ValidationError(DataUtilsError):
+    """Raised when data fails validation checks against expected schemas or rules."""
+
     pass
 
-class ValidationError(DataProcessingError):
-    """Raised when input data fails schema validation."""
+
+class TransformationError(DataUtilsError):
+    """Raised when data transformation, parsing, or casting operations fail."""
+
     pass
 
-class TransformationError(DataProcessingError):
-    """Raised when data transformation fails."""
+
+class ConfigurationError(DataUtilsError):
+    """Raised when invalid options or environment settings are supplied."""
+
     pass
 
-class ResourceNotFoundError(DataProcessingError):
-    """Raised when requested resource does not exist."""
+
+class ResourceNotFoundError(DataUtilsError):
+    """Raised when a specified key, file, or data structure is missing."""
+
     pass
-
-def handle_processing_error(error: Exception) -> dict:
-    """Formats exceptions into a standard dictionary response."""
-    return {
-        "status": "error",
-        "type": error.__class__.__name__,
-        "message": str(error)
-    }
-
-# Helper to validate data structure presence
-def validate_keys(data: dict, required_keys: list):
-    """
-    Ensures dictionary contains required keys.
-    Raises ValidationError if any are missing.
-    """
-    missing = [key for key in required_keys if key not in data]
-    if missing:
-        raise ValidationError(f"Missing required keys: {', '.join(missing)}")
