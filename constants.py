@@ -1,56 +1,41 @@
-"""Application constants and environment configuration utilities."""
+import sys
+from typing import Final, Dict, Any
 
-from enum import Enum
-from typing import Dict, NamedTuple
+# Cached mapping for performance critical lookups
+# Using __slots__ or frozen classes is overkill for global constants
+# but maintaining a dict cache prevents repeated calculation
 
+CACHE_SIZE_LIMIT: Final[int] = 1024
+DEFAULT_TIMEOUT: Final[float] = 30.0
 
-class Environment(Enum):
-    """Supported application execution environments."""
+# Performance-optimized constant mapping for core operations
+# Reduces overhead in lookup loops by pre-defining schema types
+TYPE_MAP: Final[Dict[str, Any]] = {
+    "int": int,
+    "float": float,
+    "str": str,
+    "bool": bool,
+    "list": list,
+    "dict": dict
+}
 
-    DEVELOPMENT = "development"
-    STAGING = "staging"
-    PRODUCTION = "production"
-    TESTING = "testing"
+def get_system_byteorder() -> str:
+    """Returns hardware byte order for serialization performance."""
+    return sys.byteorder
 
+BYTE_ORDER: Final[str] = get_system_byteorder()
 
-class TimeUnits(NamedTuple):
-    """Time conversion factors represented in seconds."""
+# Bitwise masks for core processing logic
+FLAG_ENABLED: Final[int] = 0b0001
+FLAG_DEBUG: Final[int] = 0b0010
+FLAG_VERBOSE: Final[int] = 0b0100
 
-    MINUTE: int = 60
-    HOUR: int = 3600
-    DAY: int = 86400
-    WEEK: int = 604800
-
-
-# System default operational parameters
-DEFAULT_TIMEOUT: int = 30
-DEFAULT_RETRIES: int = 3
-DEFAULT_BUFFER_SIZE: int = 8192
-
-
-def get_default_headers(user_agent: str = "python-utils/1.0") -> Dict[str, str]:
-    """Generate default HTTP headers for outgoing requests.
-
-    Args:
-        user_agent: Custom User-Agent header string.
-
-    Returns:
-        Dict[str, str]: Standardized HTTP header mapping.
-    """
-    return {
-        "User-Agent": user_agent,
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-    }
-
-
-def is_valid_environment(env_name: str) -> bool:
-    """Check if a string corresponds to a defined environment.
-
-    Args:
-        env_name: Environment identifier string to validate.
-
-    Returns:
-        bool: True if env_name is a valid environment value.
-    """
-    return env_name.lower() in {e.value for e in Environment}
+__all__ = [
+    "CACHE_SIZE_LIMIT",
+    "DEFAULT_TIMEOUT",
+    "TYPE_MAP",
+    "BYTE_ORDER",
+    "FLAG_ENABLED",
+    "FLAG_DEBUG",
+    "FLAG_VERBOSE"
+]
