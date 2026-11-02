@@ -1,40 +1,39 @@
-from typing import Any, Dict, List, Optional
+import re
+from typing import Any, Optional
 
-def validate_schema(data: Dict[str, Any], schema: Dict[str, type]) -> List[str]:
-    """Verify data dictionary against a provided type schema."""
-    errors = []
+def validate_input_schema(data: Any, schema: dict) -> bool:
+    """Validate dictionary against expected types and keys."""
+    if not isinstance(data, dict):
+        return False
+    
     for key, expected_type in schema.items():
         if key not in data:
-            errors.append(f"missing required key: {key}")
-        elif not isinstance(data[key], expected_type):
-            errors.append(f"invalid type for {key}: expected {expected_type.__name__}")
-    return errors
+            return False
+        if not isinstance(data[key], expected_type):
+            return False
+    return True
 
-def sanitize_string(value: Any, default: str = "") -> str:
-    """Ensure value is a string, stripping whitespace."""
+def sanitize_string(value: Any) -> Optional[str]:
+    """Clean input strings for safe processing."""
     if not isinstance(value, str):
-        return default
-    return value.strip()
+        return None
+    # Remove non-alphanumeric characters excluding standard punctuation
+    clean = re.sub(r'[^a-zA-Z0-9\s\.,_-]', '', value)
+    return clean.strip()
 
-def ensure_list(value: Any) -> List[Any]:
-    """Normalize input into a list."""
-    if value is None:
-        return []
-    if isinstance(value, list):
-        return value
-    return [value]
-
-def is_non_empty_dict(data: Any) -> bool:
-    """Check if variable is a non-empty dictionary."""
-    return isinstance(data, dict) and len(data) > 0
-
-def get_nested(data: Dict, path: str, default: Any = None) -> Any:
-    """Retrieve value from nested dictionary using dot notation."""
-    keys = path.split('.')
-    current = data
-    for key in keys:
-        if isinstance(current, dict) and key in current:
-            current = current[key]
-        else:
-            return default
-    return current
+def process_main_loop(payload: Any) -> None:
+    """
+    Main processing loop entry point with validation logic.
+    Schema: expected input keys and types.
+    """
+    schema = {'id': int, 'data': str}
+    
+    if not validate_input_schema(payload, schema):
+        raise ValueError("Invalid input payload structure")
+    
+    sanitized_data = sanitize_string(payload['data'])
+    if sanitized_data is None:
+        raise ValueError("Corrupted data string provided")
+    
+    # Proceed with logic using sanitized_data
+    print(f"Processing record {payload['id']}: {sanitized_data}")
