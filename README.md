@@ -1,51 +1,54 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 # python-utils-50
 
-A curated collection of production-ready Python utility functions designed to streamline repetitive coding tasks. This library focuses on performance, readability, and minimizing boilerplate code in daily scripting and enterprise projects.
+`python-utils-50` is a lightweight, zero-dependency collection of fifty essential helper functions designed to streamline everyday Python development. From resilient retry mechanics to advanced nested dictionary manipulation, this library eliminates repetitive boilerplate across your automation scripts and backend pipelines.
 
 ## Features
 
-*   **Data Validation:** Robust decorators and schemas for rapid input sanitization and type checking.
-*   **File System Helpers:** Simplified context managers for recursive directory traversing and bulk file processing.
-*   **Performance Benchmarking:** Intuitive decorators to measure and log function execution time in production logs.
-*   **String Formatting:** Optimized utilities for handling complex regex-based replacements and text cleaning workflows.
+* **Resilient Execution:** Built-in `@retry` decorator with configurable exponential backoff and jitter for handling transient I/O failures.
+* **Deep Data Operations:** Recursively merge complex dictionaries and access nested keys safely using fluid dot-notation paths.
+* **String & File Formatting:** High-performance slugifiers, secure token generators, and atomic file-writing helpers.
+* **Zero External Dependencies:** Built entirely on top of the standard Python library to keep your environment lean and secure.
 
 ## Installation
 
-Install the package via pip:
+Install the package via `pip`:
 
 ```bash
 pip install python-utils-50
 ```
 
-To install from source for local development:
+Or install the latest development version directly from source:
 
 ```bash
-git clone https://github.com/Developer/python-utils-50.git
-cd python-utils-50
-pip install -e .
+pip install git+https://github.com/Developer/python-utils-50.git
 ```
 
-## Usage
-
-Import the required utilities to handle common boilerplate tasks with clean, readable code.
+## Quick Start
 
 ```python
-from pyutils import time_it, slugify
+from python_utils_50 import retry, deep_merge, slugify
 
-# Use the benchmarking decorator to monitor function performance
-@time_it
-def process_data(data):
-    return [d.upper() for d in data]
+# 1. Clean and format strings for URLs or filenames
+clean_name = slugify(" Python Utils 50: Version 1.0! ")
+print(clean_name)  # Output: "python-utils-50-version-10"
 
-# Clean strings for URL-friendly naming conventions
-raw_text = "Hello World: Utilities Edition!"
-cleaned = slugify(raw_text)
+# 2. Deep-merge nested configurations without overwriting parent keys
+default_config = {"database": {"host": "localhost", "port": 5432}}
+user_config = {"database": {"port": 5433, "ssl": True}}
 
-print(f"Slug: {cleaned}")
+final_config = deep_merge(default_config, user_config)
+print(final_config)
+# Output: {'database': {'host': 'localhost', 'port': 5433, 'ssl': True}}
+
+# 3. Add auto-retry behavior to unstable operations
+@retry(max_attempts=3, delay=1.0, backoff=2.0)
+def connect_to_service():
+    print("Attempting connection...")
+    # Network call logic here
 ```
 
 ## License
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Distributed under the MIT License. See `LICENSE` for more information.
