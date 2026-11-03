@@ -1,78 +1,58 @@
-import math
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Tuple
 
 
-class ProcessingError(Exception):
-    """Custom exception raised when batch record processing encounters unrecoverable errors."""
+class ValidationError(Exception):
+    """Custom exception for item validation failures."""
     pass
 
 
-class BatchProcessor:
-    """Processes and sanitizes structured batch data with edge-case handling."""
+def validate_item(item: Any) -> Dict[str, Any]:
+    """Validate an individual input item structure and content."""
+    if not isinstance(item, dict):
+        raise ValidationError(f"Expected dict, got {type(item).__name__}")
+    
+    required_keys = ["id", "name", "value"]
+    missing = [key for key in required_keys if key not in item]
+    if missing:
+        raise ValidationError(f"Missing required keys: {', '.join(missing)}")
+        
+    if not isinstance(item["id"], (int, str)) or not str(item["id"]).strip():
+        raise ValidationError("Invalid or empty item 'id'")
+        
+    if not isinstance(item["name"], str) or not item["name"].strip():
+        raise ValidationError("Item 'name' must be a non-empty string")
+        
+    if not isinstance(item["value"], (int, float)) or item["value"] < 0:
+        raise ValidationError("Item 'value' must be a non-negative number")
+        
+    return {
+        "id": str(item["id"]).strip(),
+        "name": item["name"].strip(),
+        "value": float(item["value"])
+    }
 
-    def __init__(self, strict_mode: bool = False):
-        self.strict_mode = strict_mode
 
-    def safe_divide(self, numerator: Any, denominator: Any, default: float = 0.0) -> float:
-        """Safely divides two numeric inputs, handling zero division, nan, and type conversion."""
+def process_batch(items: List[Any]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Process a batch of items with input validation in the main loop."""
+    processed_items: List[Dict[str, Any]] = []
+    errors: List[Dict[str, Any]] = []
+
+    if not isinstance(items, list):
+        raise TypeError("Input payload must be a list of items")
+
+    for index, raw_item in enumerate(items):
         try:
-            num = float(numerator)
-            den = float(denominator)
-            if den == 0.0 or math.isnan(num) or math.isnan(den) or math.isinf(num) or math.isinf(den):
-                return default
-            return num / den
-        except (ValueError, TypeError) as err:
-            if self.strict_mode:
-                raise ProcessingError(f"Invalid numeric inputs: {numerator}, {denominator}") from err
-            return default
+            validated = validate_item(raw_item)
+            transformed = {
+                "id": validated["id"],
+                "label": validated["name"].upper(),
+                "score": round(validated["value"] * 1.15, 2),
+                "status": "active"
+            }
+            processed_items.append(transformed)
+        except ValidationError as err:
+            errors.append({"index": index, "item": raw_item, "error": str(err)})
+        except Exception as err:
+            errors.append({"index": index, "item": raw_item, "error": f"Unexpected: {err}"})
 
-    def sanitize_record(self, record: Any) -> Dict[str, Any]:
-        """Normalizes dictionary values and handles malformed data types."""
-        if not isinstance(record, dict):
-            if self.strict_mode:
-                raise ProcessingError(f"Expected dict, got {type(record).__name__}")
-            return {}
-
-        clean_record = {}
-        for key, value in record.items():
-            str_key = str(key) if not isinstance(key, str) else key
-            
-            if value is None:
-                clean_record[str_key] = ""
-            elif isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
-                clean_record[str_key] = 0.0
-            elif isinstance(value, (int, float)):
-                clean_record[str_key] = round(float(value), 4)
-            elif isinstance(value, (list, tuple, set)):
-                clean_record[str_key] = [v for v in value if v is not None]
-            else:
-                clean_record[str_key] = str(value)
-
-        return clean_record
-
-    def process_batch(self, batch: Optional[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
-        """Processes a list of records while trapping bad data elements."""
-        if batch is None:
-            return []
-
-        if not isinstance(batch, (list, tuple)):
-            if self.strict_mode:
-                raise ProcessingError(f"Invalid batch payload type: {type(batch).__name__}")
-            return []
-
-        results = []
-        for item in batch:
-            try:
-                cleaned = self.sanitize_record(item)
-                if cleaned:
-                    results.append(cleaned)
-            except ProcessingError:
-                if self.strict_mode:
-                    raise
-                continue
-            except Exception as err:
-                if self.strict_mode:
-                    raise ProcessingError(f"Unexpected processing failure: {err}") from err
-                continue
-
-        return results
+    return processed_items, errors
