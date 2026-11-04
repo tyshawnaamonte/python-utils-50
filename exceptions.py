@@ -1,42 +1,32 @@
-"""Custom exception hierarchy for general data handling utilities."""
+class UtilsError(Exception):
+    """Base exception class for python-utils-50."""
 
-from typing import Any, Dict, Optional
+class ConfigurationError(UtilsError):
+    """Raised when utility configuration is invalid."""
 
+class ValidationError(UtilsError):
+    """Raised when data fails schema validation."""
 
-class DataUtilsError(Exception):
-    """Base exception for all errors raised by the data utils library."""
+class ExecutionError(UtilsError):
+    """Raised when a process fails during execution."""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__(message)
-        self.message = message
-        self.details = details or {}
+def handle_utils_exception(e: Exception) -> None:
+    """
+    Centralized error handling for unexpected utility failures.
+    Logs the error type and returns context-aware messages.
+    """
+    if isinstance(e, UtilsError):
+        print(f"[Utils Error] {e.__class__.__name__}: {e}")
+    else:
+        print(f"[Critical Error] Unexpected failure: {type(e).__name__} - {e}")
 
-    def __str__(self) -> str:
-        if self.details:
-            detail_str = ", ".join(f"{k}={v!r}" for k, v in self.details.items())
-            return f"{self.message} ({detail_str})"
-        return self.message
-
-
-class ValidationError(DataUtilsError):
-    """Raised when data fails validation checks against expected schemas or rules."""
-
-    pass
-
-
-class TransformationError(DataUtilsError):
-    """Raised when data transformation, parsing, or casting operations fail."""
-
-    pass
-
-
-class ConfigurationError(DataUtilsError):
-    """Raised when invalid options or environment settings are supplied."""
-
-    pass
-
-
-class ResourceNotFoundError(DataUtilsError):
-    """Raised when a specified key, file, or data structure is missing."""
-
-    pass
+def validate_resource(data: dict) -> bool:
+    """
+    Validates presence of required keys in a resource dictionary.
+    Raises ValidationError if keys are missing.
+    """
+    required = {'id', 'version'}
+    if not all(key in data for key in required):
+        missing = required - set(data.keys())
+        raise ValidationError(f"Missing required keys: {missing}")
+    return True
