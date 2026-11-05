@@ -1,39 +1,32 @@
 import re
-from typing import Any, Optional
+import socket
+from typing import Any
 
-def validate_input_schema(data: Any, schema: dict) -> bool:
-    """Validate dictionary against expected types and keys."""
-    if not isinstance(data, dict):
+def is_valid_email(email: str) -> bool:
+    """Validates email string format using standard regex."""
+    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+    return bool(re.match(pattern, email))
+
+def is_valid_ip(ip: str) -> bool:
+    """Checks if a string is a valid IPv4 address."""
+    try:
+        socket.inet_aton(ip)
+        return ip.count('.') == 3
+    except (socket.error, AttributeError):
         return False
-    
-    for key, expected_type in schema.items():
-        if key not in data:
-            return False
-        if not isinstance(data[key], expected_type):
-            return False
+
+def is_not_empty(value: Any) -> bool:
+    """Checks if a value is not None, empty string, list, or dict."""
+    if value is None:
+        return False
+    if isinstance(value, (str, list, dict, set, tuple)):
+        return len(value) > 0
     return True
 
-def sanitize_string(value: Any) -> Optional[str]:
-    """Clean input strings for safe processing."""
-    if not isinstance(value, str):
-        return None
-    # Remove non-alphanumeric characters excluding standard punctuation
-    clean = re.sub(r'[^a-zA-Z0-9\s\.,_-]', '', value)
-    return clean.strip()
+def is_in_range(value: int, min_val: int, max_val: int) -> bool:
+    """Checks if numeric value is within inclusive bounds."""
+    return min_val <= value <= max_val
 
-def process_main_loop(payload: Any) -> None:
-    """
-    Main processing loop entry point with validation logic.
-    Schema: expected input keys and types.
-    """
-    schema = {'id': int, 'data': str}
-    
-    if not validate_input_schema(payload, schema):
-        raise ValueError("Invalid input payload structure")
-    
-    sanitized_data = sanitize_string(payload['data'])
-    if sanitized_data is None:
-        raise ValueError("Corrupted data string provided")
-    
-    # Proceed with logic using sanitized_data
-    print(f"Processing record {payload['id']}: {sanitized_data}")
+def is_alphanumeric(value: str) -> bool:
+    """Validates that string contains only alphanumeric characters."""
+    return value.isalnum()
