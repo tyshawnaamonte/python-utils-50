@@ -1,32 +1,35 @@
 import re
-import socket
-from typing import Any
 
-def is_valid_email(email: str) -> bool:
-    """Validates email string format using standard regex."""
-    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-    return bool(re.match(pattern, email))
-
-def is_valid_ip(ip: str) -> bool:
-    """Checks if a string is a valid IPv4 address."""
-    try:
-        socket.inet_aton(ip)
-        return ip.count('.') == 3
-    except (socket.error, AttributeError):
+def validate_input_data(data: dict) -> bool:
+    """Validates dictionary keys and value formats."""
+    required_keys = ['id', 'payload', 'timestamp']
+    
+    # Ensure all required keys exist
+    if not all(k in data for k in required_keys):
         return False
-
-def is_not_empty(value: Any) -> bool:
-    """Checks if a value is not None, empty string, list, or dict."""
-    if value is None:
+        
+    # Validate ID format (must be alphanumeric)
+    if not isinstance(data['id'], str) or not data['id'].isalnum():
         return False
-    if isinstance(value, (str, list, dict, set, tuple)):
-        return len(value) > 0
+        
+    # Validate payload is non-empty dictionary
+    if not isinstance(data['payload'], dict) or not data['payload']:
+        return False
+        
     return True
 
-def is_in_range(value: int, min_val: int, max_val: int) -> bool:
-    """Checks if numeric value is within inclusive bounds."""
-    return min_val <= value <= max_val
+def sanitize_string(value: str) -> str:
+    """Removes non-alphanumeric characters from input strings."""
+    return re.sub(r'[^a-zA-Z0-9]', '', value)
 
-def is_alphanumeric(value: str) -> bool:
-    """Validates that string contains only alphanumeric characters."""
-    return value.isalnum()
+def process_stream(data_stream: list):
+    """Main loop with integrated input validation."""
+    processed = []
+    for item in data_stream:
+        if validate_input_data(item):
+            # Clean payload before processing
+            item['id'] = sanitize_string(item['id'])
+            processed.append(item)
+        else:
+            continue
+    return processed
