@@ -1,74 +1,64 @@
-"""General utility functions for data manipulation and safe type conversion."""
-
-import collections.abc
-from typing import Any, Dict, Generator, Iterable, List, Optional, Type, TypeVar
+import time
+from functools import wraps
+from typing import Any, Callable, Dict, Generator, Iterable, List, TypeVar
 
 T = TypeVar("T")
 
 
-def chunk_iterable(iterable: Iterable[T], chunk_size: int) -> Generator[List[T], None, None]:
-    """Yield successive chunks of specified size from an iterable.
+def timed_lru_cache(seconds: int, maxsize: int = 128) -> Callable:
+    """Decorator providing an LRU cache with time-based expiration (TTL)."""
+    def decorator(func: Callable) -> Callable:
+        cache: Dict[tuple, tuple[Any, float]] = {}
 
-    Args:
-        iterable: The sequence or iterable to split into chunks.
-        chunk_size: Maximum number of elements in each chunk.
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            key = (args, tuple(sorted(kwargs.items())))
+            now = time.monotonic()
 
-    Yields:
-        Lists containing up to `chunk_size` elements.
+            if key in cache:
+                result, timestamp = cache[key]
+                if now - timestamp < seconds:
+                    return result
 
-    Raises:
-        ValueError: If chunk_size is less than 1.
-    """
-    if chunk_size < 1:
-        raise ValueError("chunk_size must be at least 1")
+            result = func(*args, **kwargs)
+            if len(cache) >= maxsize and key not in cache:
+                oldest_key = next(iter(cache))
+                del cache[oldest_key]
+
+            cache[key] = (result, now)
+            return result
+
+        return wrapper
+    return decorator
+
+
+def chunk_iterable(iterable: Iterable[T], size: int) -> Generator[List[T], None, None]:
+    """Efficiently split an iterable into chunks of specified size using memory-friendly yield."""
+    if size <= 0:
+        raise ValueError("Chunk size must be greater than 0")
 
     chunk: List[T] = []
     for item in iterable:
         chunk.append(item)
-        if len(chunk) == chunk_size:
+        if len(chunk) == size:
             yield chunk
             chunk = []
     if chunk:
         yield chunk
 
 
-def flatten_dict(
-    nested_dict: Dict[str, Any],
-    parent_key: str = "",
-    sep: str = "."
-) -> Dict[str, Any]:
-    """Flatten a nested dictionary by concatenating keys with a separator.
+def fast_flatten_dict(d: Dict[str, Any], parent_key: str = "", sep: str = ".") -> Dict[str, Any]:
+    """Iterative, memory-optimized dictionary flattening to reduce call stack overhead."""
+    items: Dict[str, Any] = {}
+    stack = [(d, parent_key)]
 
-    Args:
-        nested_dict: The dictionary containing nested dictionary values.
-        parent_key: Prefix for keys at the current recursion level.
-        sep: String separator used between nested keys.
+    while stack:
+        curr, prefix = stack.pop()
+        for k, v in curr.items():
+            new_key = f"{prefix}{sep}{k}" if prefix else str(k)
+            if isinstance(v, dict) and v:
+                stack.append((v, new_key))
+            else:
+                items[new_key] = v
 
-    Returns:
-        A single-level dictionary with flattened key paths.
-    """
-    items: List[tuple] = []
-    for key, value in nested_dict.items():
-        new_key = f"{parent_key}{sep}{key}" if parent_key else str(key)
-        if isinstance(value, collections.abc.Mapping):
-            items.extend(flatten_dict(value, new_key, sep=sep).items())
-        else:
-            items.append((new_key, value))
-    return dict(items)
-
-
-def safe_cast(val: Any, to_type: Type[T], default: Optional[T] = None) -> Optional[T]:
-    """Safely convert a value to a target type with fallback.
-
-    Args:
-        val: The value to be cast.
-        to_type: The target class or type function.
-        default: Fallback value returned if conversion fails.
-
-    Returns:
-        The converted value, or default if casting raises ValueError or TypeError.
-    """
-    try:
-        return to_type(val)
-    except (ValueError, TypeError):
-        return default
+    return items
