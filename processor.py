@@ -1,58 +1,54 @@
-from typing import Any, Dict, List, Tuple
+import logging
+from typing import Any, Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 
-class ValidationError(Exception):
-    """Custom exception for item validation failures."""
-    pass
+class DataProcessor:
+    """Batch data processor with input validation."""
 
+    def __init__(self, required_keys: Optional[List[str]] = None) -> None:
+        self.required_keys = required_keys or ["id", "payload"]
 
-def validate_item(item: Any) -> Dict[str, Any]:
-    """Validate an individual input item structure and content."""
-    if not isinstance(item, dict):
-        raise ValidationError(f"Expected dict, got {type(item).__name__}")
-    
-    required_keys = ["id", "name", "value"]
-    missing = [key for key in required_keys if key not in item]
-    if missing:
-        raise ValidationError(f"Missing required keys: {', '.join(missing)}")
-        
-    if not isinstance(item["id"], (int, str)) or not str(item["id"]).strip():
-        raise ValidationError("Invalid or empty item 'id'")
-        
-    if not isinstance(item["name"], str) or not item["name"].strip():
-        raise ValidationError("Item 'name' must be a non-empty string")
-        
-    if not isinstance(item["value"], (int, float)) or item["value"] < 0:
-        raise ValidationError("Item 'value' must be a non-negative number")
-        
-    return {
-        "id": str(item["id"]).strip(),
-        "name": item["name"].strip(),
-        "value": float(item["value"])
-    }
+    def validate_item(self, item: Any) -> Tuple[bool, str]:
+        """Validate an individual input item before processing."""
+        if not isinstance(item, dict):
+            return False, f"Expected dict item, got {type(item).__name__}"
 
+        for key in self.required_keys:
+            if key not in item:
+                return False, f"Missing required key: {key}"
+            if item[key] is None:
+                return False, f"Value for key '{key}' cannot be None"
 
-def process_batch(items: List[Any]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-    """Process a batch of items with input validation in the main loop."""
-    processed_items: List[Dict[str, Any]] = []
-    errors: List[Dict[str, Any]] = []
+        return True, "Valid"
 
-    if not isinstance(items, list):
-        raise TypeError("Input payload must be a list of items")
+    def process_batch(self, items: List[Any]) -> Dict[str, Any]:
+        """Process a batch of items with strict input validation in the main loop."""
+        processed = []
+        failed = []
 
-    for index, raw_item in enumerate(items):
-        try:
-            validated = validate_item(raw_item)
-            transformed = {
-                "id": validated["id"],
-                "label": validated["name"].upper(),
-                "score": round(validated["value"] * 1.15, 2),
-                "status": "active"
-            }
-            processed_items.append(transformed)
-        except ValidationError as err:
-            errors.append({"index": index, "item": raw_item, "error": str(err)})
-        except Exception as err:
-            errors.append({"index": index, "item": raw_item, "error": f"Unexpected: {err}"})
+        for index, item in enumerate(items):
+            # Input validation step in main processing loop
+            is_valid, reason = self.validate_item(item)
+            if not is_valid:
+                logger.warning(f"Item at index {index} skipped: {reason}")
+                failed.append({"index": index, "item": item, "reason": reason})
+                continue
 
-    return processed_items, errors
+            # Simulated payload processing
+            try:
+                payload_upper = str(item["payload"]).strip().upper()
+                result = {"id": item["id"], "processed_payload": payload_upper}
+                processed.append(result)
+            except Exception as exc:
+                logger.error(f"Error processing item {index}: {exc}")
+                failed.append({"index": index, "item": item, "reason": str(exc)})
+
+        return {
+            "total": len(items),
+            "successful_count": len(processed),
+            "failed_count": len(failed),
+            "results": processed,
+            "errors": failed,
+        }
