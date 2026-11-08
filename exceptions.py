@@ -1,32 +1,42 @@
-class UtilsError(Exception):
-    """Base exception class for python-utils-50."""
+"""Custom exceptions for general data handling and utility operations."""
 
-class ConfigurationError(UtilsError):
-    """Raised when utility configuration is invalid."""
 
-class ValidationError(UtilsError):
-    """Raised when data fails schema validation."""
+class UtilError(Exception):
+    """Base exception class for all python-utils errors."""
 
-class ExecutionError(UtilsError):
-    """Raised when a process fails during execution."""
+    def __init__(self, message: str = "An unexpected utility error occurred."):
+        self.message = message
+        super().__init__(self.message)
 
-def handle_utils_exception(e: Exception) -> None:
-    """
-    Centralized error handling for unexpected utility failures.
-    Logs the error type and returns context-aware messages.
-    """
-    if isinstance(e, UtilsError):
-        print(f"[Utils Error] {e.__class__.__name__}: {e}")
-    else:
-        print(f"[Critical Error] Unexpected failure: {type(e).__name__} - {e}")
 
-def validate_resource(data: dict) -> bool:
-    """
-    Validates presence of required keys in a resource dictionary.
-    Raises ValidationError if keys are missing.
-    """
-    required = {'id', 'version'}
-    if not all(key in data for key in required):
-        missing = required - set(data.keys())
-        raise ValidationError(f"Missing required keys: {missing}")
-    return True
+class DataValidationError(UtilError):
+    """Raised when data fails validation checks."""
+
+    def __init__(self, field: str, value: object, reason: str):
+        self.field = field
+        self.value = value
+        self.reason = reason
+        message = f"Validation failed for field '{field}' with value '{value}': {reason}"
+        super().__init__(message)
+
+
+class DataTransformationError(UtilError):
+    """Raised when converting or transforming data fails."""
+
+    def __init__(self, source_type: str, target_type: str, details: str = ""):
+        self.source_type = source_type
+        self.target_type = target_type
+        self.details = details
+        message = f"Failed to transform data from {source_type} to {target_type}"
+        if details:
+            message += f": {details}"
+        super().__init__(message)
+
+
+class ConfigurationError(UtilError):
+    """Raised when a configuration setting is invalid or missing."""
+
+    def __init__(self, key: str, details: str = "Missing or invalid setting"):
+        self.key = key
+        self.details = details
+        super().__init__(f"Configuration error for key '{key}': {details}")
