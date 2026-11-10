@@ -1,42 +1,30 @@
-"""Custom exceptions for general data handling and utility operations."""
+from typing import Optional, Any
 
-
-class UtilError(Exception):
-    """Base exception class for all python-utils errors."""
-
-    def __init__(self, message: str = "An unexpected utility error occurred."):
-        self.message = message
-        super().__init__(self.message)
-
-
-class DataValidationError(UtilError):
-    """Raised when data fails validation checks."""
-
-    def __init__(self, field: str, value: object, reason: str):
-        self.field = field
-        self.value = value
-        self.reason = reason
-        message = f"Validation failed for field '{field}' with value '{value}': {reason}"
+class BaseUtilsError(Exception):
+    """Base exception class for all utils library errors."""
+    def __init__(self, message: str, code: Optional[int] = None) -> None:
         super().__init__(message)
+        self.code = code
 
+class ConfigurationError(BaseUtilsError):
+    """Raised when the provided configuration is invalid."""
+    pass
 
-class DataTransformationError(UtilError):
-    """Raised when converting or transforming data fails."""
-
-    def __init__(self, source_type: str, target_type: str, details: str = ""):
-        self.source_type = source_type
-        self.target_type = target_type
-        self.details = details
-        message = f"Failed to transform data from {source_type} to {target_type}"
-        if details:
-            message += f": {details}"
+class ValidationError(BaseUtilsError):
+    """Raised when data validation fails during processing."""
+    def __init__(self, message: str, target: Any = None) -> None:
         super().__init__(message)
+        self.target = target
 
+class ProcessingError(BaseUtilsError):
+    """Raised when an unexpected error occurs during data transformation."""
+    pass
 
-class ConfigurationError(UtilError):
-    """Raised when a configuration setting is invalid or missing."""
+def raise_if_none(value: Optional[Any], name: str) -> None:
+    """Utility to raise a validation error if the provided value is None."""
+    if value is None:
+        raise ValidationError(f"Required parameter '{name}' cannot be None")
 
-    def __init__(self, key: str, details: str = "Missing or invalid setting"):
-        self.key = key
-        self.details = details
-        super().__init__(f"Configuration error for key '{key}': {details}")
+def format_error_msg(error: Exception) -> str:
+    """Helper to format exception details into a readable string."""
+    return f"{error.__class__.__name__}: {str(error)}"
