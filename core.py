@@ -1,38 +1,44 @@
-import logging
-from typing import Any, Callable, Optional
+import functools
+import time
+from typing import Any, Callable, Generator, Iterable, List, TypeVar
 
-logger = logging.getLogger(__name__)
+T = TypeVar("T")
 
-def safe_execute(func: Callable, *args: Any, default: Any = None, **kwargs: Any) -> Any:
-    """Execute a function with standardized error handling."""
-    try:
-        return func(*args, **kwargs)
-    except TypeError as e:
-        logger.error(f"Invalid argument type: {e}")
-    except ValueError as e:
-        logger.error(f"Invalid value provided: {e}")
-    except Exception as e:
-        logger.critical(f"Unexpected execution failure: {e}", exc_info=True)
-    return default
 
-def validate_input(data: Any, expected_type: type) -> bool:
-    """Verify data integrity and type constraints."""
-    if data is None:
-        logger.warning("Validation failed: data is None")
-        return False
-    
-    if not isinstance(data, expected_type):
-        logger.warning(f"Validation failed: expected {expected_type}, got {type(data)}")
-        return False
-    
-    return True
+def memoize_with_ttl(ttl_seconds: float = 60.0) -> Callable:
+    """Decorator that caches function results with a time-to-live expiration."""
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        cache: dict[tuple, tuple[Any, float]] = {}
 
-class ExecutionContext:
-    """Resource manager for controlled process execution."""
-    def __init__(self, name: str):
-        self.name = name
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            key = (args, tuple(sorted(kwargs.items())))
+            now = time.time()
+            if key in cache:
+                result, timestamp = cache[key]
+                if now - timestamp < ttl_seconds:
+                    return result
+            result = func(*args, **kwargs)
+            cache[key] = (result, now)
+            return result
 
-    def run(self, action: Callable, payload: Any) -> Optional[Any]:
-        if not validate_input(payload, dict):
-            return None
-        return safe_execute(action, payload)
+        return wrapper
+
+    return decorator
+
+
+def batch_stream(
+    iterable: Iterable[T], batch_size: int = 100
+) -> Generator[List[T], None, None]:
+    """Efficiently yield items from iterable in fixed-size batches to reduce memory footprint."""
+    if batch_size < 1:
+        raise ValueError("batch_size must be at least 1")
+
+    batch: List[T] = []
+    for item in iterable:
+        batch.append(item)
+        if len(batch) == batch_size:
+            yield batch
+            batch = []
+    if batch:
+        yield batch
