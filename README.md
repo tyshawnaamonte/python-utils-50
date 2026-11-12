@@ -1,54 +1,50 @@
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
 # python-utils-50
 
-`python-utils-50` is a lightweight, zero-dependency collection of fifty essential helper functions designed to streamline everyday Python development. From resilient retry mechanics to advanced nested dictionary manipulation, this library eliminates repetitive boilerplate across your automation scripts and backend pipelines.
+A curated collection of high-performance utility functions and helper classes designed to streamline repetitive Python development tasks. This library focuses on clean, dependency-free code to improve maintainability across various projects.
 
 ## Features
 
-* **Resilient Execution:** Built-in `@retry` decorator with configurable exponential backoff and jitter for handling transient I/O failures.
-* **Deep Data Operations:** Recursively merge complex dictionaries and access nested keys safely using fluid dot-notation paths.
-* **String & File Formatting:** High-performance slugifiers, secure token generators, and atomic file-writing helpers.
-* **Zero External Dependencies:** Built entirely on top of the standard Python library to keep your environment lean and secure.
+*   **FileSystem Streamline:** Simplify recursive directory traversal and complex path manipulations with intuitive one-line wrappers.
+*   **Data Transformation:** Efficiently convert nested dictionaries to dot-notation objects and handle complex JSON serialization edge cases.
+*   **Time Utilities:** Robust wrappers for timestamp conversion, timezone-aware interval calculations, and execution benchmarking decorators.
+*   **Validation Helpers:** Lightweight schema checking and email/URL format sanitizers to minimize boilerplate input validation.
 
 ## Installation
 
-Install the package via `pip`:
+Install the package via pip:
 
 ```bash
 pip install python-utils-50
 ```
 
-Or install the latest development version directly from source:
+For development mode and access to the testing suite:
 
 ```bash
-pip install git+https://github.com/Developer/python-utils-50.git
+git clone https://github.com/Developer/python-utils-50.git
+cd python-utils-50
+pip install -r requirements.txt
 ```
 
-## Quick Start
+## Usage
+
+Here is a quick example of how to use the execution timer decorator to profile your functions:
 
 ```python
-from python_utils_50 import retry, deep_merge, slugify
+from pyutils.time import timer
 
-# 1. Clean and format strings for URLs or filenames
-clean_name = slugify(" Python Utils 50: Version 1.0! ")
-print(clean_name)  # Output: "python-utils-50-version-10"
+@timer
+def process_data(items):
+    # Simulate an intensive task
+    return [i**2 for i in range(items)]
 
-# 2. Deep-merge nested configurations without overwriting parent keys
-default_config = {"database": {"host": "localhost", "port": 5432}}
-user_config = {"database": {"port": 5433, "ssl": True}}
-
-final_config = deep_merge(default_config, user_config)
-print(final_config)
-# Output: {'database': {'host': 'localhost', 'port': 5433, 'ssl': True}}
-
-# 3. Add auto-retry behavior to unstable operations
-@retry(max_attempts=3, delay=1.0, backoff=2.0)
-def connect_to_service():
-    print("Attempting connection...")
-    # Network call logic here
+# The execution time will be automatically logged to console
+process_data(100000)
 ```
 
+For advanced usage, refer to the [documentation](https://github.com/Developer/python-utils-50/wiki) for full module specifications.
+
 ## License
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Distributed under the MIT License. See `LICENSE` for more information.
