@@ -3,45 +3,27 @@ import sys
 from typing import Optional
 
 def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
-    """
-    Creates and configures a standard logger instance.
-
-    Args:
-        name: The name of the logger.
-        level: The logging threshold level.
-
-    Returns:
-        A configured logging.Logger instance.
-    """
+    """Configures and returns a standard logger instance."""
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(formatter)
-    
     if not logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        handler.setFormatter(formatter)
         logger.addHandler(handler)
 
     return logger
 
-def log_exception(logger: logging.Logger, message: str, exc: Exception) -> None:
-    """
-    Logs an exception with an associated message.
+def log_execution_time(logger: logging.Logger, func_name: str, elapsed: float) -> None:
+    """Utility to log execution duration of a function."""
+    logger.info(f"Function '{func_name}' completed in {elapsed:.4f} seconds")
 
-    Args:
-        logger: The logger instance to use.
-        message: Contextual information about the error.
-        exc: The exception object being logged.
-    """
-    logger.error(f"{message}: {str(exc)}", exc_info=True)
+def format_exception(e: Exception) -> str:
+    """Utility to standardize exception string formatting."""
+    return f"{type(e).__name__}: {str(e)}"
 
-class CustomAdapter(logging.LoggerAdapter):
-    """
-    An adapter for injecting contextual information into log messages.
-    """
-    def process(self, msg: str, kwargs: dict) -> tuple[str, dict]:
-        return f"[{self.extra['context']}] {msg}", kwargs
+# Global default logger instance
+default_logger = get_logger("python-utils-50")
