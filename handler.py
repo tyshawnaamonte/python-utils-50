@@ -1,30 +1,51 @@
-from typing import Any, Dict, Optional, Callable
+"""Task and execution handler utilities for robust operations."""
 
-class DataHandler:
-    """Utility class for processing dictionary data with validation."""
+import time
+from typing import Any, Callable, Dict, Optional, TypeVar
 
-    def __init__(self, fallback_value: Any = None) -> None:
-        """Initialize the handler with an optional fallback value."""
-        self.fallback = fallback_value
+T = TypeVar("T")
 
-    def get_nested(self, data: Dict[str, Any], path: str) -> Any:
-        """Retrieve value from nested dictionary using dot notation."""
-        keys = path.split('.')
-        current = data
 
-        try:
-            for key in keys:
-                current = current[key]
-            return current
-        except (KeyError, TypeError):
-            return self.fallback
+class TaskHandler:
+    """Handles execution of callables with retry logic and fallback mechanisms."""
 
-    def apply_transform(self, data: Dict[str, Any], func: Callable[[Any], Any], key: str) -> Dict[str, Any]:
-        """Apply transformation function to a specific key."""
-        if key in data:
-            data[key] = func(data[key])
-        return data
+    def __init__(self, max_retries: int = 3, delay: float = 1.0) -> None:
+        """Initialize the handler with default retry configuration."""
+        self.max_retries = max_retries
+        self.delay = delay
+        self._execution_stats: Dict[str, int] = {"success": 0, "failed": 0}
 
-    def validate_keys(self, data: Dict[str, Any], required: list[str]) -> bool:
-        """Check if all required keys exist in dictionary."""
-        return all(key in data for key in required)
+    def execute(
+        self,
+        func: Callable[..., T],
+        *args: Any,
+        fallback: Optional[T] = None,
+        **kwargs: Any,
+    ) -> Optional[T]:
+        """Execute a callable with retry handling and optional fallback value.
+
+        Args:
+            func: The function to execute.
+            *args: Positional arguments for the function.
+            fallback: Default value returned if all retries fail.
+            **kwargs: Keyword arguments for the function.
+
+        Returns:
+            The function result if successful, otherwise the fallback value.
+        """
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                result = func(*args, **kwargs)
+                self._execution_stats["success"] += 1
+                return result
+            except Exception:
+                if attempt < self.max_retries:
+                    time.sleep(self.delay)
+                else:
+                    self._execution_stats["failed"] += 1
+
+        return fallback
+
+    def get_stats(self) -> Dict[str, int]:
+        """Retrieve execution statistics for the handler instance."""
+        return self._execution_stats.copy()
