@@ -1,32 +1,53 @@
-import json
-from typing import Any, Dict, Optional
+import re
+from typing import Any, Dict, Iterable, List, Generator, Union
 
-def deep_get(data: Dict[str, Any], path: str, default: Any = None) -> Any:
-    """Retrieve nested values from dictionaries using dot notation."""
-    keys = path.split('.')
-    curr = data
-    try:
-        for key in keys:
-            curr = curr[key]
-        return curr
-    except (KeyError, TypeError):
-        return default
 
-def clean_dict(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively remove None values from a dictionary."""
-    return {
-        k: clean_dict(v) if isinstance(v, dict) else v
-        for k, v in data.items()
-        if v is not None
-    }
+def flatten_dict(
+    d: Dict[str, Any], parent_key: str = "", sep: str = "."
+) -> Dict[str, Any]:
+    """Flatten a nested dictionary into a single-level dictionary."""
+    items: List[tuple] = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else str(k)
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
 
-def to_json_str(data: Any, indent: int = 2) -> str:
-    """Serialize data to formatted JSON string."""
-    return json.dumps(data, indent=indent, default=str)
 
-def safe_parse_json(raw_data: str) -> Optional[Dict[str, Any]]:
-    """Safely parse JSON strings with error catching."""
-    try:
-        return json.loads(raw_data)
-    except (ValueError, TypeError):
-        return None
+def chunk_iterable(
+    iterable: Iterable[Any], size: int
+) -> Generator[List[Any], None, None]:
+    """Yield successive chunks of specified size from an iterable."""
+    if size <= 0:
+        raise ValueError("Chunk size must be greater than zero.")
+    chunk = []
+    for item in iterable:
+        chunk.append(item)
+        if len(chunk) == size:
+            yield chunk
+            chunk = []
+    if chunk:
+        yield chunk
+
+
+def safe_get(
+    data: Dict[str, Any], path: Union[str, List[str]], default: Any = None
+) -> Any:
+    """Safely retrieve nested values from a dictionary using a path."""
+    keys = path.split(".") if isinstance(path, str) else path
+    current = data
+    for key in keys:
+        if isinstance(current, dict) and key in current:
+            current = current[key]
+        else:
+            return default
+    return current
+
+
+def slugify(text: str) -> str:
+    """Convert string to a clean, lowercase URL-friendly slug."""
+    text = str(text).lower().strip()
+    text = re.sub(r"[^\w\s-]", "", text)
+    return re.sub(r"[-\s]+", "-", text)
