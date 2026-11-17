@@ -1,41 +1,30 @@
-import sys
-from typing import Final, Dict, Any
+import os
+from typing import Final
 
-# Cached mapping for performance critical lookups
-# Using __slots__ or frozen classes is overkill for global constants
-# but maintaining a dict cache prevents repeated calculation
+# Standard timeout intervals in seconds
+DEFAULT_TIMEOUT: Final[int] = 30
+SHORT_TIMEOUT: Final[int] = 5
 
-CACHE_SIZE_LIMIT: Final[int] = 1024
-DEFAULT_TIMEOUT: Final[float] = 30.0
+# Common path structures
+BASE_DIR: Final[str] = os.path.dirname(os.path.abspath(__file__))
+LOG_DIR: Final[str] = os.path.join(BASE_DIR, 'logs')
 
-# Performance-optimized constant mapping for core operations
-# Reduces overhead in lookup loops by pre-defining schema types
-TYPE_MAP: Final[Dict[str, Any]] = {
-    "int": int,
-    "float": float,
-    "str": str,
-    "bool": bool,
-    "list": list,
-    "dict": dict
-}
+# Environment configuration keys
+ENV_PREFIX: Final[str] = 'APP_'
+DATABASE_URL_KEY: Final[str] = 'DATABASE_URL'
+DEBUG_MODE_KEY: Final[str] = 'DEBUG'
 
-def get_system_byteorder() -> str:
-    """Returns hardware byte order for serialization performance."""
-    return sys.byteorder
+# Supported file extensions
+ALLOWED_EXTENSIONS: Final[set] = {'.json', '.csv', '.yaml', '.txt'}
 
-BYTE_ORDER: Final[str] = get_system_byteorder()
+# Validation constraints
+MAX_RETRY_ATTEMPTS: Final[int] = 3
+MIN_PASSWORD_LENGTH: Final[int] = 8
 
-# Bitwise masks for core processing logic
-FLAG_ENABLED: Final[int] = 0b0001
-FLAG_DEBUG: Final[int] = 0b0010
-FLAG_VERBOSE: Final[int] = 0b0100
+def get_app_config(key: str, default: str = '') -> str:
+    """Retrieve configuration from environment variables."""
+    return os.environ.get(f"{ENV_PREFIX}{key}", default)
 
-__all__ = [
-    "CACHE_SIZE_LIMIT",
-    "DEFAULT_TIMEOUT",
-    "TYPE_MAP",
-    "BYTE_ORDER",
-    "FLAG_ENABLED",
-    "FLAG_DEBUG",
-    "FLAG_VERBOSE"
-]
+def is_valid_extension(filename: str) -> bool:
+    """Check if a file has a supported extension."""
+    return any(filename.endswith(ext) for ext in ALLOWED_EXTENSIONS)
