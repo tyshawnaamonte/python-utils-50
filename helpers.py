@@ -1,53 +1,29 @@
-import re
-from typing import Any, Dict, Iterable, List, Generator, Union
+from typing import Any, Dict, List, Optional, Union
 
-
-def flatten_dict(
-    d: Dict[str, Any], parent_key: str = "", sep: str = "."
-) -> Dict[str, Any]:
-    """Flatten a nested dictionary into a single-level dictionary."""
-    items: List[tuple] = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else str(k)
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
+def merge_dicts(dict1: Dict[Any, Any], dict2: Dict[Any, Any]) -> Dict[Any, Any]:
+    """Recursively merge two dictionaries."""
+    result = dict1.copy()
+    for key, value in dict2.items():
+        if isinstance(value, dict) and key in result and isinstance(result[key], dict):
+            result[key] = merge_dicts(result[key], value)
         else:
-            items.append((new_key, v))
-    return dict(items)
+            result[key] = value
+    return result
 
+def extract_by_keys(data: Dict[str, Any], keys: List[str]) -> Dict[str, Any]:
+    """Extract a subset of keys from a dictionary."""
+    return {k: data[k] for k in keys if k in data}
 
-def chunk_iterable(
-    iterable: Iterable[Any], size: int
-) -> Generator[List[Any], None, None]:
-    """Yield successive chunks of specified size from an iterable."""
-    if size <= 0:
-        raise ValueError("Chunk size must be greater than zero.")
-    chunk = []
-    for item in iterable:
-        chunk.append(item)
-        if len(chunk) == size:
-            yield chunk
-            chunk = []
-    if chunk:
-        yield chunk
+def format_byte_size(size_bytes: int) -> str:
+    """Convert bytes to human-readable string format."""
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if size_bytes < 1024:
+            return f"{size_bytes:.2f} {unit}"
+        size_bytes /= 1024
+    return f"{size_bytes:.2f} PB"
 
-
-def safe_get(
-    data: Dict[str, Any], path: Union[str, List[str]], default: Any = None
-) -> Any:
-    """Safely retrieve nested values from a dictionary using a path."""
-    keys = path.split(".") if isinstance(path, str) else path
-    current = data
-    for key in keys:
-        if isinstance(current, dict) and key in current:
-            current = current[key]
-        else:
-            return default
-    return current
-
-
-def slugify(text: str) -> str:
-    """Convert string to a clean, lowercase URL-friendly slug."""
-    text = str(text).lower().strip()
-    text = re.sub(r"[^\w\s-]", "", text)
-    return re.sub(r"[-\s]+", "-", text)
+def ensure_list(item: Union[Any, List[Any]]) -> List[Any]:
+    """Force input into a list if not already one."""
+    if isinstance(item, list):
+        return item
+    return [item] if item is not None else []
