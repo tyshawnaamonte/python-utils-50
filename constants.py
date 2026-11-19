@@ -1,30 +1,29 @@
 import os
 from typing import Final
 
-# Standard timeout intervals in seconds
+# Standard environmental constants for application configuration
 DEFAULT_TIMEOUT: Final[int] = 30
-SHORT_TIMEOUT: Final[int] = 5
+MAX_RETRIES: Final[int] = 3
+DATE_FORMAT: Final[str] = '%Y-%m-%d %H:%M:%S'
 
-# Common path structures
+# File system and path constants
 BASE_DIR: Final[str] = os.path.dirname(os.path.abspath(__file__))
 LOG_DIR: Final[str] = os.path.join(BASE_DIR, 'logs')
 
-# Environment configuration keys
-ENV_PREFIX: Final[str] = 'APP_'
-DATABASE_URL_KEY: Final[str] = 'DATABASE_URL'
-DEBUG_MODE_KEY: Final[str] = 'DEBUG'
+# Application-wide MIME types and common headers
+DEFAULT_HEADERS: Final[dict] = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+}
 
-# Supported file extensions
-ALLOWED_EXTENSIONS: Final[set] = {'.json', '.csv', '.yaml', '.txt'}
+# Thresholds for data processing
+CHUNK_SIZE: Final[int] = 1024 * 1024  # 1MB
+BUFFER_SIZE: Final[int] = 4096
 
-# Validation constraints
-MAX_RETRY_ATTEMPTS: Final[int] = 3
-MIN_PASSWORD_LENGTH: Final[int] = 8
+# Boolean configuration flags
+DEBUG_MODE: Final[bool] = os.getenv('DEBUG', 'False').lower() == 'true'
+ENABLE_CACHING: Final[bool] = True
 
-def get_app_config(key: str, default: str = '') -> str:
-    """Retrieve configuration from environment variables."""
-    return os.environ.get(f"{ENV_PREFIX}{key}", default)
-
-def is_valid_extension(filename: str) -> bool:
-    """Check if a file has a supported extension."""
-    return any(filename.endswith(ext) for ext in ALLOWED_EXTENSIONS)
+# Error and status messages
+SUCCESS_MESSAGE: Final[str] = 'Operation completed successfully'
+ERROR_MESSAGE: Final[str] = 'An unexpected error occurred'
