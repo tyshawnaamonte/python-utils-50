@@ -1,64 +1,37 @@
-import time
-from functools import wraps
-from typing import Any, Callable, Dict, Generator, Iterable, List, TypeVar
+import json
+import os
+from typing import Any, Dict, Optional
 
-T = TypeVar("T")
+def load_json_file(file_path: str) -> Dict[str, Any]:
+    """Reads and parses a JSON file into a dictionary."""
+    if not os.path.exists(file_path):
+        return {}
+    
+    with open(file_path, 'r', encoding='utf-8') as f:
+        try:
+            return json.load(f)
+        except json.JSONDecodeError:
+            return {}
 
+def save_json_file(file_path: str, data: Dict[str, Any]) -> bool:
+    """Serializes dictionary data to a JSON file."""
+    try:
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4, sort_keys=True)
+        return True
+    except (IOError, TypeError):
+        return False
 
-def timed_lru_cache(seconds: int, maxsize: int = 128) -> Callable:
-    """Decorator providing an LRU cache with time-based expiration (TTL)."""
-    def decorator(func: Callable) -> Callable:
-        cache: Dict[tuple, tuple[Any, float]] = {}
+def get_nested_key(data: Dict[str, Any], keys: list, default: Any = None) -> Any:
+    """Retrieves a nested dictionary value using a key list."""
+    current = data
+    for key in keys:
+        if isinstance(current, dict) and key in current:
+            current = current[key]
+        else:
+            return default
+    return current
 
-        @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            key = (args, tuple(sorted(kwargs.items())))
-            now = time.monotonic()
-
-            if key in cache:
-                result, timestamp = cache[key]
-                if now - timestamp < seconds:
-                    return result
-
-            result = func(*args, **kwargs)
-            if len(cache) >= maxsize and key not in cache:
-                oldest_key = next(iter(cache))
-                del cache[oldest_key]
-
-            cache[key] = (result, now)
-            return result
-
-        return wrapper
-    return decorator
-
-
-def chunk_iterable(iterable: Iterable[T], size: int) -> Generator[List[T], None, None]:
-    """Efficiently split an iterable into chunks of specified size using memory-friendly yield."""
-    if size <= 0:
-        raise ValueError("Chunk size must be greater than 0")
-
-    chunk: List[T] = []
-    for item in iterable:
-        chunk.append(item)
-        if len(chunk) == size:
-            yield chunk
-            chunk = []
-    if chunk:
-        yield chunk
-
-
-def fast_flatten_dict(d: Dict[str, Any], parent_key: str = "", sep: str = ".") -> Dict[str, Any]:
-    """Iterative, memory-optimized dictionary flattening to reduce call stack overhead."""
-    items: Dict[str, Any] = {}
-    stack = [(d, parent_key)]
-
-    while stack:
-        curr, prefix = stack.pop()
-        for k, v in curr.items():
-            new_key = f"{prefix}{sep}{k}" if prefix else str(k)
-            if isinstance(v, dict) and v:
-                stack.append((v, new_key))
-            else:
-                items[new_key] = v
-
-    return items
+def sanitize_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Removes null values from a dictionary."""
+    return {k: v for k, v in data.items() if v is not None}
