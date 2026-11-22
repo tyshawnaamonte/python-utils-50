@@ -1,30 +1,33 @@
-from typing import Optional, Any
-
 class BaseUtilsError(Exception):
-    """Base exception class for all utils library errors."""
-    def __init__(self, message: str, code: Optional[int] = None) -> None:
-        super().__init__(message)
-        self.code = code
-
-class ConfigurationError(BaseUtilsError):
-    """Raised when the provided configuration is invalid."""
+    """Base exception for python-utils-50 library."""
     pass
 
 class ValidationError(BaseUtilsError):
-    """Raised when data validation fails during processing."""
-    def __init__(self, message: str, target: Any = None) -> None:
-        super().__init__(message)
-        self.target = target
-
-class ProcessingError(BaseUtilsError):
-    """Raised when an unexpected error occurs during data transformation."""
+    """Raised when input validation fails."""
     pass
 
-def raise_if_none(value: Optional[Any], name: str) -> None:
-    """Utility to raise a validation error if the provided value is None."""
-    if value is None:
-        raise ValidationError(f"Required parameter '{name}' cannot be None")
+class ConfigurationError(BaseUtilsError):
+    """Raised when configuration constraints are violated."""
+    pass
 
-def format_error_msg(error: Exception) -> str:
-    """Helper to format exception details into a readable string."""
-    return f"{error.__class__.__name__}: {str(error)}"
+class ResourceNotFoundError(BaseUtilsError):
+    """Raised when a requested resource is missing."""
+    pass
+
+def handle_error(e: Exception) -> None:
+    """Centralized handler for edge case logging."""
+    if isinstance(e, BaseUtilsError):
+        # Standard domain exceptions are logged as warnings
+        print(f"Domain error occurred: {e}")
+    else:
+        # Unexpected exceptions are logged as critical
+        print(f"Critical system error: {e}")
+        raise
+
+def validate_input(data: any, expected_type: type) -> bool:
+    """Utility for strict input checking."""
+    if data is None:
+        raise ValidationError("Input data cannot be None")
+    if not isinstance(data, expected_type):
+        raise ValidationError(f"Expected {expected_type.__name__}, got {type(data).__name__}")
+    return True
