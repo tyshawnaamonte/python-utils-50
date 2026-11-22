@@ -1,30 +1,44 @@
-import time
-import functools
-import logging
+import math
+from typing import Any, Dict, Generator, Sequence, Optional
 
-logger = logging.getLogger(__name__)
 
-def retry(exceptions, tries=3, delay=1, backoff=2):
-    """
-    Retry decorator for functions prone to intermittent network failure.
-    
-    :param exceptions: tuple of exceptions to catch
-    :param tries: max number of retry attempts
-    :param delay: initial delay between retries in seconds
-    :param backoff: multiplier applied to delay after each failure
-    """
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            mtries, mdelay = tries, delay
-            while mtries > 1:
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as e:
-                    logger.warning(f"{func.__name__} failed: {e}. Retrying in {mdelay}s...")
-                    time.sleep(mdelay)
-                    mtries -= 1
-                    mdelay *= backoff
-            return func(*args, **kwargs)
-        return wrapper
-    return decorator
+def format_bytes(size_bytes: int) -> str:
+    """Convert a byte count into a human-readable string representation."""
+    if size_bytes < 0:
+        raise ValueError("Size cannot be negative.")
+    if size_bytes == 0:
+        return "0 B"
+    units = ("B", "KB", "MB", "GB", "TB", "PB")
+    i = int(math.floor(math.log(size_bytes, 1024)))
+    p = math.pow(1024, i)
+    s = round(size_bytes / p, 2)
+    return f"{s} {units[i]}"
+
+
+def chunkify(items: Sequence[Any], chunk_size: int) -> Generator[Sequence[Any], None, None]:
+    """Yield successive fixed-size chunks from a given sequence."""
+    if chunk_size <= 0:
+        raise ValueError("Chunk size must be greater than zero.")
+    for i in range(0, len(items), chunk_size):
+        yield items[i : i + chunk_size]
+
+
+def get_nested(data: Dict[str, Any], path: str, default: Optional[Any] = None, delimiter: str = ".") -> Any:
+    """Safely retrieve a nested dictionary value using a delimited path string."""
+    keys = path.split(delimiter)
+    current = data
+    for key in keys:
+        if isinstance(current, dict) and key in current:
+            current = current[key]
+        else:
+            return default
+    return current
+
+
+def truncate_text(text: str, max_length: int, suffix: str = "...") -> str:
+    """Truncate a string to a maximum length, adding a suffix if shortened."""
+    if len(text) <= max_length:
+        return text
+    if max_length < len(suffix):
+        return text[:max_length]
+    return text[: max_length - len(suffix)] + suffix
