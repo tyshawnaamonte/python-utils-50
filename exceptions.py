@@ -1,33 +1,26 @@
+from typing import Optional, Any
+
 class BaseUtilsError(Exception):
-    """Base exception for python-utils-50 library."""
+    """Base exception class for all python-utils-50 errors."""
+    def __init__(self, message: str, code: Optional[int] = None) -> None:
+        super().__init__(message)
+        self.code = code
+
+class ConfigurationError(BaseUtilsError):
+    """Raised when the utility configuration is invalid."""
     pass
+
+class ProcessingError(BaseUtilsError):
+    """Raised when data processing operations fail."""
+    def __init__(self, message: str, context: Any = None) -> None:
+        super().__init__(message)
+        self.context = context
 
 class ValidationError(BaseUtilsError):
     """Raised when input validation fails."""
     pass
 
-class ConfigurationError(BaseUtilsError):
-    """Raised when configuration constraints are violated."""
-    pass
-
-class ResourceNotFoundError(BaseUtilsError):
-    """Raised when a requested resource is missing."""
-    pass
-
-def handle_error(e: Exception) -> None:
-    """Centralized handler for edge case logging."""
-    if isinstance(e, BaseUtilsError):
-        # Standard domain exceptions are logged as warnings
-        print(f"Domain error occurred: {e}")
-    else:
-        # Unexpected exceptions are logged as critical
-        print(f"Critical system error: {e}")
-        raise
-
-def validate_input(data: any, expected_type: type) -> bool:
-    """Utility for strict input checking."""
-    if data is None:
-        raise ValidationError("Input data cannot be None")
-    if not isinstance(data, expected_type):
-        raise ValidationError(f"Expected {expected_type.__name__}, got {type(data).__name__}")
-    return True
+def raise_if_none(value: Any, name: str) -> None:
+    """Ensure value is not None or raise ValidationError."""
+    if value is None:
+        raise ValidationError(f"Required parameter '{name}' cannot be None")
