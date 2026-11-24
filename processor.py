@@ -1,49 +1,56 @@
-"""Data processing utilities for handling nested structures and collections."""
+"""Batch data processing utilities for generic collection transformations."""
 
-from typing import Any, Dict, Generator, List, Sequence, TypeVar
+from typing import TypeVar, Callable, List, Iterable, Any, Dict
 
 T = TypeVar("T")
+R = TypeVar("R")
 
 
-def flatten_dict(
-    data: Dict[str, Any],
-    parent_key: str = "",
-    sep: str = "."
-) -> Dict[str, Any]:
-    """Recursively flatten a nested dictionary using key concatenation."""
-    items: List[tuple[str, Any]] = []
-    for key, value in data.items():
-        new_key = f"{parent_key}{sep}{key}" if parent_key else key
-        if isinstance(value, dict):
-            items.extend(flatten_dict(value, new_key, sep=sep).items())
-        else:
-            items.append((new_key, value))
-    return dict(items)
+class BatchProcessor:
+    """Executes item processing in configurable chunks with optional filtering."""
+
+    def __init__(self, batch_size: int = 100) -> None:
+        if batch_size <= 0:
+            raise ValueError("batch_size must be a positive integer")
+        self.batch_size: int = batch_size
+
+    def chunk_items(self, items: Iterable[T]) -> List[List[T]]:
+        """Split an iterable into lists of maximum length `batch_size`."""
+        chunks: List[List[T]] = []
+        current_chunk: List[T] = []
+
+        for item in items:
+            current_chunk.append(item)
+            if len(current_chunk) == self.batch_size:
+                chunks.append(current_chunk)
+                current_chunk = []
+
+        if current_chunk:
+            chunks.append(current_chunk)
+
+        return chunks
+
+    def map_batches(
+        self, items: Iterable[T], func: Callable[[T], R], skip_errors: bool = False
+    ) -> List[R]:
+        """Apply a mapping function across item batches with optional error handling."""
+        results: List[R] = []
+        for chunk in self.chunk_items(items):
+            for item in chunk:
+                try:
+                    results.append(func(item))
+                except Exception as err:
+                    if not skip_errors:
+                        raise err
+        return results
 
 
-def unflatten_dict(
-    data: Dict[str, Any],
-    sep: str = "."
-) -> Dict[str, Any]:
-    """Reconstruct a nested dictionary from a flattened dictionary."""
-    result: Dict[str, Any] = {}
-    for key, value in data.items():
-        parts = key.split(sep)
-        current = result
-        for part in parts[:-1]:
-            if part not in current:
-                current[part] = {}
-            current = current[part]
-        current[parts[-1]] = value
-    return result
-
-
-def chunk_iterable(
-    iterable: Sequence[T],
-    chunk_size: int
-) -> Generator[List[T], None, None]:
-    """Yield successive fixed-size chunks from a sequence."""
-    if chunk_size <= 0:
-        raise ValueError("chunk_size must be greater than zero")
-    for i in range(0, len(iterable), chunk_size):
-        yield list(iterable[i : i + chunk_size])
+def process_dictionary_list(
+    records: List[Dict[str, Any]], key_mapping: Dict[str, str]
+) -> List[Dict[str, Any]]:
+    """Rename keys in a list of dictionary records based on a mapping dictionary."""
+    transformed: List[Dict[str, Any]] = []
+    for record in records:
+        new_record = {key_mapping.get(k, k): v for k, v in record.items()}
+        transformed.append(new_record)
+    return transformed
