@@ -1,44 +1,56 @@
-import math
-from typing import Any, Dict, Generator, Sequence, Optional
+import functools
+import logging
+import random
+import time
+from typing import Any, Callable, Tuple, Type, Union
+
+logger = logging.getLogger(__name__)
 
 
-def format_bytes(size_bytes: int) -> str:
-    """Convert a byte count into a human-readable string representation."""
-    if size_bytes < 0:
-        raise ValueError("Size cannot be negative.")
-    if size_bytes == 0:
-        return "0 B"
-    units = ("B", "KB", "MB", "GB", "TB", "PB")
-    i = int(math.floor(math.log(size_bytes, 1024)))
-    p = math.pow(1024, i)
-    s = round(size_bytes / p, 2)
-    return f"{s} {units[i]}"
+def retry_network_op(
+    max_retries: int = 3,
+    backoff_factor: float = 1.0,
+    exceptions: Union[Type[BaseException], Tuple[Type[BaseException], ...]] = (
+        TimeoutError,
+        ConnectionError,
+        OSError,
+    ),
+    jitter: bool = True,
+) -> Callable:
+    """Decorator to retry network operations with exponential backoff and jitter."""
 
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            retries = 0
+            while True:
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as exc:
+                    retries += 1
+                    if retries > max_retries:
+                        logger.error(
+                            "Operation %s failed after %d retries: %s",
+                            func.__name__,
+                            max_retries,
+                            exc,
+                        )
+                        raise exc
 
-def chunkify(items: Sequence[Any], chunk_size: int) -> Generator[Sequence[Any], None, None]:
-    """Yield successive fixed-size chunks from a given sequence."""
-    if chunk_size <= 0:
-        raise ValueError("Chunk size must be greater than zero.")
-    for i in range(0, len(items), chunk_size):
-        yield items[i : i + chunk_size]
+                    sleep_time = backoff_factor * (2 ** (retries - 1))
+                    if jitter:
+                        sleep_time += random.uniform(0, 0.1 * sleep_time)
 
+                    logger.warning(
+                        "Attempt %d/%d failed for %s: %s. Retrying in %.2fs...",
+                        retries,
+                        max_retries,
+                        func.__name__,
+                        exc,
+                        sleep_time,
+                    )
+                    time.sleep(sleep_time)
 
-def get_nested(data: Dict[str, Any], path: str, default: Optional[Any] = None, delimiter: str = ".") -> Any:
-    """Safely retrieve a nested dictionary value using a delimited path string."""
-    keys = path.split(delimiter)
-    current = data
-    for key in keys:
-        if isinstance(current, dict) and key in current:
-            current = current[key]
-        else:
-            return default
-    return current
+        return wrapper
 
-
-def truncate_text(text: str, max_length: int, suffix: str = "...") -> str:
-    """Truncate a string to a maximum length, adding a suffix if shortened."""
-    if len(text) <= max_length:
-        return text
-    if max_length < len(suffix):
-        return text[:max_length]
-    return text[: max_length - len(suffix)] + suffix
+    return decorator
