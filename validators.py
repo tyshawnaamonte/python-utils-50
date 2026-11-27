@@ -1,25 +1,34 @@
-import re
-from typing import Any, Optional
+import logging
 
-def validate_email(email: str) -> bool:
-    """Validates standard email format using regex."""
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return bool(re.match(pattern, email))
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-def validate_range(value: Any, min_val: float, max_val: float) -> bool:
-    """Checks if a numeric value falls within inclusive range."""
-    if not isinstance(value, (int, float)):
-        return False
-    return min_val <= value <= max_val
+def validate_input_data(data):
+    """Ensures input data conforms to expected processing schema."""
+    if not isinstance(data, dict):
+        raise ValueError("Input must be a dictionary")
+    
+    required_keys = ['task_id', 'payload']
+    for key in required_keys:
+        if key not in data:
+            raise KeyError(f"Missing required field: {key}")
+            
+    if not isinstance(data['task_id'], int) or data['task_id'] <= 0:
+        raise ValueError("task_id must be a positive integer")
+        
+    return True
 
-def is_non_empty_string(value: Any) -> bool:
-    """Ensures input is a string and contains non-whitespace content."""
-    return isinstance(value, str) and bool(value.strip())
+def process_main_loop(data_stream):
+    """Main loop with integrated input validation."""
+    for item in data_stream:
+        try:
+            if validate_input_data(item):
+                logger.info(f"Processing task {item['task_id']}")
+                # Logic to handle valid data goes here
+        except (ValueError, KeyError) as e:
+            logger.error(f"Validation failed for input: {e}")
+            continue
 
-def sanitize_input(value: Any, default: Any = None) -> Any:
-    """Returns value if valid string, otherwise returns default."""
-    return value if is_non_empty_string(value) else default
-
-def validate_schema(data: dict, keys: list) -> bool:
-    """Verifies all required keys exist in dictionary."""
-    return all(key in data for key in keys)
+if __name__ == "__main__":
+    mock_stream = [{'task_id': 1, 'payload': 'test'}, {'task_id': -1, 'payload': 'fail'}]
+    process_main_loop(mock_stream)
