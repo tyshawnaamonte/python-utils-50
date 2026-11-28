@@ -1,34 +1,28 @@
-import functools
-from typing import Any, Callable, TypeVar, ParamSpec
+from typing import Optional, Any
 
-T = TypeVar('T')
-P = ParamSpec('P')
-
-class PerformanceError(Exception):
-    """Custom exception for utility performance bottlenecks."""
+class BaseUtilsError(Exception):
+    """Base exception class for python-utils-50 library."""
     pass
 
-def cache_result(func: Callable[P, T]) -> Callable[P, T]:
-    """Thread-safe memoization decorator for compute-intensive tasks."""
-    cache: dict[tuple[Any, ...], T] = {}
+class ValidationError(BaseUtilsError):
+    """Raised when input validation fails."""
+    def __init__(self, message: str, context: Optional[Any] = None) -> None:
+        super().__init__(message)
+        self.context = context
 
-    @functools.wraps(func)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-        key = (args, tuple(sorted(kwargs.items())))
-        if key not in cache:
-            cache[key] = func(*args, **kwargs)
-        return cache[key]
-    return wrapper
+class ConfigurationError(BaseUtilsError):
+    """Raised when environment or configuration is invalid."""
+    def __init__(self, message: str, key: Optional[str] = None) -> None:
+        super().__init__(message)
+        self.key = key
 
-@cache_result
-def validate_resource_intensity(data: str) -> bool:
-    """Mock validation function with memoization optimization."""
-    # Simulate expensive computation
-    result = len(data.strip()) > 0
-    return result
+class ExecutionError(BaseUtilsError):
+    """Raised when a process fails during execution."""
+    def __init__(self, message: str, exit_code: int = 1) -> None:
+        super().__init__(message)
+        self.exit_code = exit_code
 
-class ProcessingException(PerformanceError):
-    """Standardized exception for processing failures."""
-    def __init__(self, message: str, code: int = 500):
-        super().__init__(f"[{code}] {message}")
-        self.code = code
+def raise_if_none(value: Any, name: str) -> None:
+    """Validates that a variable is not None, raising ValidationError if so."""
+    if value is None:
+        raise ValidationError(f"Variable '{name}' cannot be None")
